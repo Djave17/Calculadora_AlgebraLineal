@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import List, Optional
-from .sistema_lineal import SistemaLineal
+from Operadores.sistema_lineal import SistemaLineal
 from .solucion import Solucion, Parametrica
 from .solucionador import Solucionador
-from .estrategia_pivoteo import PivoteoParcial, EstrategiaPivoteo
-from .reductor_escalonado import ReductorEscalonado
-from .registrador import RegistradorOperaciones
+from Operadores.estrategia_pivoteo import PivoteoParcial, EstrategiaPivoteo
+from Operadores.reductor_escalonado import ReductorEscalonado
+from Operadores.registrador import RegistradorOperaciones
 
 
 class SolucionadorGaussJordan(Solucionador):
