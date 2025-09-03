@@ -62,7 +62,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from ViewModels.viewmodels import MatrixCalculatorViewModel, ResultVM, StepVM
+from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
 
 
 class MatrixCalculatorWindow(QMainWindow):
@@ -78,9 +78,9 @@ class MatrixCalculatorWindow(QMainWindow):
     # constraints shown in the left panel of the screenshot: 2–10 rows,
     # 3–12 columns.
     MIN_ROWS = 2
-    MAX_ROWS = 10
+    MAX_ROWS = 100
     MIN_COLS = 3
-    MAX_COLS = 12
+    MAX_COLS = 100
 
     def __init__(self) -> None:
         super().__init__()
