@@ -9,6 +9,7 @@ operaciones elementales de fila (intercambio, escalar, suma de filas) necesarias
 # algebra_lineal/Models/matriz.py
 from __future__ import annotations
 from typing import List, Sequence, Tuple
+from Models.Errores.errores import ManejadorErrores as ME
 
 
 class Matriz:
@@ -40,28 +41,27 @@ class Matriz:
 
     # -------------------- Acceso seguro --------------------
     def _validar_indices(self, i: int, j: int) -> None:
+        ME.validar_datos_matriz(self._datos)
         if not (0 <= i < self._filas):
             raise IndexError(f"Índice de fila fuera de rango: {i}")
         if not (0 <= j < self._cols):
             raise IndexError(f"Índice de columna fuera de rango: {j}")
 
     def obtener(self, i: int, j: int) -> float:
-        self._validar_indices(i, j)
+        ME.validar_indices(i, j, self._filas, self._cols)
         return self._datos[i][j]
 
     def poner(self, i: int, j: int, valor: float) -> None:
-        self._validar_indices(i, j)
+        ME.validar_indices(i, j, self._filas, self._cols)
         self._datos[i][j] = valor
 
     # Acceso por fila completa (copia para preservar encapsulamiento)
     def obtener_fila(self, i: int) -> List[float]:
-        if not (0 <= i < self._filas):
-            raise IndexError("Índice de fila fuera de rango.")
+        ME.validar_indice_fila(i, self._filas)
         return list(self._datos[i])
 
     def asignar_fila(self, i: int, nueva_fila: Sequence[float]) -> None:
-        if not (0 <= i < self._filas):
-            raise IndexError("Índice de fila fuera de rango.")
+        ME.validar_indice_fila(i, self._filas)
         if len(nueva_fila) != self._cols:
             raise ValueError("Longitud de fila incompatible con la matriz.")
         self._datos[i] = list(nueva_fila)

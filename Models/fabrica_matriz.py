@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Iterable
 from Models.matriz import Matriz
+from Models.Errores.manejador_errores import ManejadorErrores as ME
 
 
 class FabricaMatriz:
@@ -9,8 +10,7 @@ class FabricaMatriz:
 
     @staticmethod
     def identidad(n: int) -> Matriz:
-        if n <= 0:
-            raise ValueError("El tamaño debe ser positivo.")
+        ME.validar_dimensiones_positivas(n, n)
         datos = [[0.0] * n for _ in range(n)]
         for i in range(n):
             datos[i][i] = 1.0
