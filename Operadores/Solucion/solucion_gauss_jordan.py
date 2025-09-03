@@ -22,7 +22,7 @@ class SolucionadorGaussJordan(Solucionador):
 
     def resolver(self, sistema: SistemaLineal, registrar_pasos: bool = False) -> Solucion:
         A = sistema.A
-        b = sistema.b()
+        b = sistema.b
         aug = sistema.como_matriz_aumentada()
         n_vars = sistema.num_variables()
 

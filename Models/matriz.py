@@ -9,7 +9,7 @@ operaciones elementales de fila (intercambio, escalar, suma de filas) necesarias
 # algebra_lineal/Models/matriz.py
 from __future__ import annotations
 from typing import List, Sequence, Tuple
-from Models.Errores.errores import ManejadorErrores as ME
+from Models.Errores.manejador_errores import ManejadorErrores as ME
 
 
 class Matriz:

@@ -8,7 +8,7 @@ from typing import List, Optional
 # Imports del proyecto (ejecutar desde la raíz del repo)
 from Models.matriz import Matriz
 from Models.fabrica_matriz import FabricaMatriz  # por si quieres generar identidad/ceros en la sesión
-from Models.Errores.errores import ErrorAlgebraLineal
+from Models.Errores.errores import  ErrorAlgebraLineal
 from Operadores.sistema_lineal import SistemaLineal
 from Operadores.Solucion.solucion_gauss_jordan import SolucionadorGaussJordan
 from Operadores.estrategia_pivoteo import PivoteoParcial
