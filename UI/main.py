@@ -1,35 +1,12 @@
 """
-Interfaz de usuario para la calculadora de matrices utilizando PySide6.
+IU de la Calculadora de Matrices (PySide6) – Método de Gauss‑Jordan
 
-Este módulo define una ventana principal que permite al usuario
-introducir un sistema de ecuaciones lineales en forma de matriz aumentada,
-elegir un método de resolución y visualizar la solución junto con un
-desglose opcional paso a paso del proceso de eliminación de Gauss–Jordan.
-La interfaz se construye con los widgets de Qt proporcionados por
-PySide6 y sigue una estética oscura y moderna acorde con los colores
-institucionales de la UAM.
-
-La interfaz se divide en dos paneles principales:
-
-1. **Configuración**: situado a la izquierda, permite especificar el
-   número de ecuaciones y variables (dentro de límites predefinidos),
-   elegir el método de solución (de momento solo Gauss–Jordan),
-   rellenar datos de ejemplo y resolver el siste        item_count = self.solution_container.count()
-        if item_count:
-            max_height = min(800, 30 * item_count + 20)
-            self.solution_scroll.setMaximumHeight(max_height)
-        else:
-            self.solution_scroll.setMaximumHeight(150) **Resultados**: a la derecha, muestra la tabla de la matriz
-   aumentada, la solución (única, infinitas o inconsistente) y,
-   opcionalmente, la lista de pasos realizados durante el algoritmo de
-   Gauss–Jordan. Cada paso incluye la operación efectuada y el estado
-   de la matriz después de dicha operación.
-
-Esta ventana se comunica con `MatrixCalculatorViewModel`, definido en
-`UI/ViewModels/resolucion_matriz_vm.py`, para realizar el cálculo
-interno. Si PySide6 no está instalado en tu entorno, al importar este
-módulo se producirá un ImportError. Asegúrate de tener PySide6
-disponible para ejecutar la interfaz.
+Permite introducir una matriz aumentada A|b y resuelve el sistema lineal
+aplicando eliminación de Gauss‑Jordan hasta alcanzar la forma escalonada
+reducida por filas (RREF). Determina si el sistema es consistente, si tiene
+solución única o infinitas soluciones y muestra la solución particular y las
+direcciones asociadas a variables libres. Los pasos del algoritmo pueden
+verse en una ventana separada.
 """
 
 from __future__ import annotations
@@ -245,39 +222,33 @@ class MatrixCalculatorWindow(QMainWindow):
     def _create_result_panel(self) -> QWidget:
         """Construye el panel de resultados y pasos.
 
-        Este panel está dividido en varias secciones: título,
-        tabla de la matriz aumentada, un separador, una zona para la
-        solución (única o paramétrica) y una zona desplazable con
-        los pasos de Gauss–Jordan.
+        Incluye: título, tabla A|b, separador, estado y un área de
+        soluciones dentro de un QScrollArea para evitar crecimiento
+        infinito. Los pasos no se renderizan inline; se muestran en
+        un diálogo mediante un botón.
         """
         panel = QWidget()
         layout = QVBoxLayout()
-        # Reducir el espaciado vertical entre elementos del panel de resultados
-        # para evitar grandes espacios en blanco cuando hay pocos datos
         layout.setSpacing(2)
         panel.setLayout(layout)
 
         # Título de la tabla
         title = QLabel("Matriz aumentada del sistema")
         font_title = QFont()
-        font_title.setPointSize(11)
+        font_title.setPointSize(14)
         font_title.setBold(True)
         title.setFont(font_title)
         layout.addWidget(title)
 
         # Tabla de la matriz aumentada [A|b]
         self.table = QTableWidget()
-        # Ajusta la política de tamaño para que crezca dentro del área de scroll
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        # Altura inicial; se ajustará en _update_table_dimensions
+        # Altura inicial; se recalcula en _update_table_dimensions
         self.table.setFixedHeight(220)
-        # Barras de desplazamiento automáticas
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # Desplazamiento suave
         self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        # Cabeceras redimensionables solo cuando se arrastran (no se ajustan todas)
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.Interactive)
@@ -299,53 +270,35 @@ class MatrixCalculatorWindow(QMainWindow):
 
         self.state_label = QLabel()
         font_state = QFont()
-        font_state.setPointSize(10)
+        font_state.setPointSize(12)
         font_state.setBold(True)
         self.state_label.setFont(font_state)
         layout.addWidget(self.state_label)
 
-        # Contenedor vertical para la solución dentro de un área de scroll.  En
-        # versiones anteriores la solución se añadía directamente al layout,
-        # lo que provocaba que el panel de resultados se expandiese sin
-        # límite al tratar sistemas con muchas variables o direcciones. Para
-        # evitar este crecimiento infinito, se utiliza un QScrollArea con
-        # altura máxima fija.  De este modo, el contenido de la solución
-        # permanece legible y se activa el scroll cuando es necesario.
+        # Contenedor vertical para la solución dentro de un área de scroll
         self.solution_widget = QWidget()
         self.solution_container = QVBoxLayout()
-        # Ajuste de márgenes y espaciado interno de la solución para minimizar
-        # los espacios entre etiquetas (valores particulares y direcciones). Al
-        # establecer márgenes en cero y un espaciado pequeño se consigue una
-        # presentación más compacta y legible.
         self.solution_container.setContentsMargins(0, 0, 0, 0)
         self.solution_container.setSpacing(2)
         self.solution_widget.setLayout(self.solution_container)
+
         self.solution_scroll = QScrollArea()
         self.solution_scroll.setWidgetResizable(True)
         self.solution_scroll.setWidget(self.solution_widget)
-        # Limitar la altura máxima de la zona de soluciones para evitar
-        # expansiones excesivas. Si la solución cabe, no habrá scroll; si
-        # es muy larga, se mostrará una barra de desplazamiento vertical.
-        self.solution_scroll.setMaximumHeight(440)
-        # Ajustar política de tamaño: expandir horizontalmente pero fijar la
-        # altura (controlada por el máximo) para evitar crecimiento infinito.
+        # Tamaño cómodo por defecto (más grande)
+        self.solution_scroll.setMinimumHeight(400)
+        self.solution_scroll.setMaximumHeight(1000)
         self.solution_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self.solution_scroll)
 
-        # Botón para abrir todos los pasos en una ventana aparte. El botón
-        # estará siempre disponible cuando exista al menos un paso, y los
-        # pasos nunca se renderizarán directamente en la página principal.
+        # Botón para ver los pasos en un diálogo
         self.btn_show_steps = QPushButton("Ver pasos Gauss–Jordan")
         self.btn_show_steps.setVisible(False)
         self.btn_show_steps.setCursor(Qt.PointingHandCursor)
         self.btn_show_steps.clicked.connect(self._show_steps_dialog)
         layout.addWidget(self.btn_show_steps)
 
-        # Título y área de scroll para los pasos. Aunque en esta versión
-        # no se muestran los pasos directamente debajo del botón, se
-        # conservan estos widgets para compatibilidad interna. Permanecen
-        # ocultos de forma permanente y solo se usan si se decide
-        # renderizar pasos en la página en el futuro.
+        # Widgets de pasos (se mantienen ocultos; no se usan inline)
         self.steps_title = QLabel("Pasos Gauss-Jordan")
         self.steps_title.setFont(font_solution)
         layout.addWidget(self.steps_title)
@@ -358,13 +311,10 @@ class MatrixCalculatorWindow(QMainWindow):
         self.steps_scroll.setWidget(self.steps_container)
         layout.addWidget(self.steps_scroll)
 
-        # Ocultar permanentemente título y scroll de pasos, pues ya no se
-        # muestran inline; se visualizarán mediante una ventana de pasos.
         self.steps_title.setVisible(False)
         self.steps_scroll.setVisible(False)
 
         layout.addStretch()
-
         return panel
 
     # ------------------------------------------------------------------
@@ -518,7 +468,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self.setStyleSheet(
             """
             QWidget {
-                font-size: 12pt;
+                font-size: 15pt;
             }
             QLabel {
                 color: #e6effb;
@@ -695,25 +645,25 @@ class MatrixCalculatorWindow(QMainWindow):
             self.table.setColumnCount(n + 1)
             headers = [f"x{j + 1}" for j in range(n)] + ["b"]
             self.table.setHorizontalHeaderLabels(headers)
-        # Ajuste de la altura de la tabla
-        row_height = 24
+
+        # Ajuste de la altura de la tabla (capada)
+        row_height = 30
         header_height = 30
-        desired = min(320, row_height * m + header_height)
+        desired = min(360, row_height * m + header_height)
         self.table.setFixedHeight(desired)
-        # Ajustar la redimensión de las columnas dependiendo del número de
-        # variables: para sistemas con pocas variables (hasta 6), se
-        # estiran para ocupar todo el ancho disponible; para más
-        # variables se mantiene el modo interactivo con barras de scroll.
+
+        # Redimensión de columnas según número de variables
         h_header = self.table.horizontalHeader()
         if n <= 6:
             h_header.setSectionResizeMode(QHeaderView.Stretch)
         else:
             h_header.setSectionResizeMode(QHeaderView.Interactive)
 
-        # Ocultar encabezados verticales
+        # Encabezados verticales
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
-        # Rellenar celdas vacías
+
+        # Rellenar celdas vacías con 0
         for i in range(m):
             for j in range(n + 1):
                 if not self.table.item(i, j):
@@ -797,14 +747,14 @@ class MatrixCalculatorWindow(QMainWindow):
             # Mostrar solución particular y direcciones asociadas a variables libres
             p = result.parametric
             particular_title = QLabel("Solución particular:")
-            particular_title.setStyleSheet("font-size: 12pt; font-weight: bold;")
+            particular_title.setStyleSheet("font-size: 13pt; font-weight: bold;")
             self.solution_container.addWidget(particular_title)
             for idx, value in enumerate(p.particular, start=1):
                 var_label = QLabel(f"x{idx} = {value:.6g}")
-                var_label.setStyleSheet("font-size: 10pt; color: #a3c2e3;")
+                var_label.setStyleSheet("font-size: 12pt; color: #a3c2e3;")
                 self.solution_container.addWidget(var_label)
             directions_title = QLabel("Direcciones asociadas a cada variable libre:")
-            directions_title.setStyleSheet("font-size: 12pt; font-weight: bold; margin-top: 8px;")
+            directions_title.setStyleSheet("font-size: 13pt; font-weight: bold; margin-top: 8px;")
             self.solution_container.addWidget(directions_title)
             for k, dir_vec in enumerate(p.directions):
                 items = []
@@ -813,12 +763,12 @@ class MatrixCalculatorWindow(QMainWindow):
                         items.append(f"{coef:.6g}·x{j+1}")
                 term = " + ".join(items) if items else "0"
                 dir_label = QLabel(f"t{k+1}: {term}")
-                dir_label.setStyleSheet("font-size: 10pt; color: #a3c2e3;")
+                dir_label.setStyleSheet("font-size: 12pt; color: #a3c2e3;")
                 self.solution_container.addWidget(dir_label)
         else:
             # Sistema inconsistente o sin solución particular conocida
             inc_label = QLabel("No existe solución.")
-            inc_label.setStyleSheet("font-size: 10pt; color: #e06c75;")
+            inc_label.setStyleSheet("font-size: 12pt; color: #e06c75;")
             self.solution_container.addWidget(inc_label)
 
         # Ajustar dinámicamente la altura de la zona de soluciones según
@@ -828,10 +778,11 @@ class MatrixCalculatorWindow(QMainWindow):
         # aproximadamente 28 píxeles de alto; se suma un margen extra.
         item_count = self.solution_container.count()
         if item_count:
-            max_height = min(700, 100 * item_count + 1000)
-            self.solution_scroll.setMaximumHeight(max_height)
+            estimated = 28 * item_count + 120
+            target = max(400, min(1000, estimated))
+            self.solution_scroll.setMaximumHeight(target)
         else:
-            self.solution_scroll.setMaximumHeight(1000)
+            self.solution_scroll.setMaximumHeight(400)
 
         # Mostrar los pasos de Gauss–Jordan. En esta versión nunca se
         # renderizan los pasos directamente en la página principal; se
