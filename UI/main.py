@@ -33,17 +33,14 @@ import os, sys
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))  # carpeta raíz
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-    
-#from __future__ import annotations
 
 import sys
 from typing import List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtGui import QFont, QColor, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, 
-    QAbstractScrollArea, 
     QApplication,
     QMainWindow,
     QWidget,
@@ -62,24 +59,20 @@ from PySide6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QMessageBox,
-    QStackedWidget
+    QStackedWidget,
+    QTextEdit
 )
+
 
 from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
 
 
 class MatrixCalculatorWindow(QMainWindow):
     """Main application window for the matrix calculator.
-
-    This class sets up the user interface elements and connects them
-    to the underlying view model. It reacts to user interactions
-    (adjusting dimensions, entering matrix values, invoking the solver)
-    and updates the display accordingly.
+    Rediseñada con una estética moderna y atractiva.
     """
 
-    # Limits for the size of the matrix. These correspond to the
-    # constraints shown in the left panel of the screenshot: 2–10 rows,
-    # 3–12 columns.
+    # Limits for the size of the matrix.
     MIN_ROWS = 2
     MAX_ROWS = 10
     MIN_COLS = 3
@@ -88,7 +81,7 @@ class MatrixCalculatorWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Calculadora de Matrices")
-        self.resize(1100, 700)
+        self.resize(1200, 750)
 
         # Instantiate the view model
         self.view_model = MatrixCalculatorViewModel()
@@ -100,7 +93,7 @@ class MatrixCalculatorWindow(QMainWindow):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(10, 10, 10, 10)
+        root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
         central_widget.setLayout(root_layout)
 
@@ -113,16 +106,20 @@ class MatrixCalculatorWindow(QMainWindow):
         root_layout.addWidget(self.stack, stretch=1)
 
         # Create pages
-        self.calculator_page = self._create_calculator_page()
         self.home_page = self._create_home_page()
-        self.stack.addWidget(self.calculator_page)
+        self.calculator_page = self._create_calculator_page()
+        self.theory_page = self._create_theory_page()
+        
         self.stack.addWidget(self.home_page)
+        self.stack.addWidget(self.calculator_page)
+        self.stack.addWidget(self.theory_page)
 
         # Set the first navigation button as active by default
-        self.btn_calc_page.setChecked(True)
+        self.btn_home_page.setChecked(True)
+        self.stack.setCurrentIndex(0)
 
-        # Apply dark style after building UI
-        self._apply_dark_theme()
+        # Apply the new style
+        self._apply_modern_theme()
 
         # Initialize table dimensions on calculator page
         self._update_table_dimensions()
@@ -132,32 +129,53 @@ class MatrixCalculatorWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _create_config_panel(self) -> QWidget:
         panel = QGroupBox("Configuración")
+        panel.setStyleSheet("""
+            QGroupBox {
+                background-color: #F8FAFF;
+                border: 1px solid #A5C0E6;
+                border-radius: 8px;
+                margin-top: 20px;
+                padding-top: 10px;
+                font-weight: bold;
+                color: #2A2A2A;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #2A2A2A;
+            }
+        """)
+        
         layout = QVBoxLayout()
+        layout.setContentsMargins(15, 20, 15, 15)
+        layout.setSpacing(15)
         panel.setLayout(layout)
-
-        # Title label (calculadora description) – similar to screenshot
-        subtitle = QLabel(
-            "Resuelve sistemas de ecuaciones lineales usando eliminación de Gauss y Gauss-Jordan"
-        )
-        subtitle.setWordWrap(True)
-        font = QFont()
-        font.setPointSize(10)
-        subtitle.setFont(font)
-        layout.addWidget(subtitle)
 
         # Grid layout for inputs
         grid = QGridLayout()
+        grid.setVerticalSpacing(10)
         layout.addLayout(grid)
 
         # Rows spin box
         rows_label = QLabel("Filas")
+        rows_label.setStyleSheet("color: #2A2A2A; font-weight: bold;")
         self.rows_spin = QSpinBox()
         self.rows_spin.setMinimum(self.MIN_ROWS)
         self.rows_spin.setMaximum(self.MAX_ROWS)
         self.rows_spin.setValue(self.view_model.rows)
         self.rows_spin.valueChanged.connect(self._on_dimensions_changed)
+        self.rows_spin.setStyleSheet("""
+            QSpinBox {
+                padding: 5px;
+                border: 1px solid #A5C0E6;
+                border-radius: 4px;
+                background-color: white;
+                color: #2A2A2A;
+            }
+        """)
         rows_note = QLabel("2–10 filas")
-        rows_note.setStyleSheet("font-size: 9pt; color: #9da5b4;")
+        rows_note.setStyleSheet("font-size: 9pt; color: #6B7280;")
 
         grid.addWidget(rows_label, 0, 0)
         grid.addWidget(self.rows_spin, 0, 1)
@@ -165,26 +183,45 @@ class MatrixCalculatorWindow(QMainWindow):
 
         # Columns spin box
         cols_label = QLabel("Columnas")
+        cols_label.setStyleSheet("color: #2A2A2A; font-weight: bold;")
         self.cols_spin = QSpinBox()
         self.cols_spin.setMinimum(self.MIN_COLS)
         self.cols_spin.setMaximum(self.MAX_COLS)
         self.cols_spin.setValue(self.view_model.cols)
         self.cols_spin.valueChanged.connect(self._on_dimensions_changed)
+        self.cols_spin.setStyleSheet("""
+            QSpinBox {
+                padding: 5px;
+                border: 1px solid #A5C0E6;
+                border-radius: 4px;
+                background-color: white;
+                color: #2A2A2A;
+            }
+        """)
         cols_note = QLabel("3–12 columnas")
-        cols_note.setStyleSheet("font-size: 9pt; color: #9da5b4;")
+        cols_note.setStyleSheet("font-size: 9pt; color: #6B7280;")
         grid.addWidget(cols_label, 2, 0)
         grid.addWidget(self.cols_spin, 2, 1)
         grid.addWidget(cols_note, 3, 0, 1, 2)
 
         # Method combobox
         method_label = QLabel("Método")
+        method_label.setStyleSheet("color: #2A2A2A; font-weight: bold;")
         self.method_combo = QComboBox()
-        # Only Gauss–Jordan implemented but combobox allows extension
         self.method_combo.addItems(["Gauss-Jordan"])
         self.method_combo.setCurrentIndex(0)
         self.method_combo.currentTextChanged.connect(self._on_method_changed)
+        self.method_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                border: 1px solid #A5C0E6;
+                border-radius: 4px;
+                background-color: white;
+                color: #2A2A2A;
+            }
+        """)
         method_note = QLabel("Método de resolución")
-        method_note.setStyleSheet("font-size: 9pt; color: #9da5b4;")
+        method_note.setStyleSheet("font-size: 9pt; color: #6B7280;")
 
         grid.addWidget(method_label, 4, 0)
         grid.addWidget(self.method_combo, 4, 1)
@@ -196,96 +233,243 @@ class MatrixCalculatorWindow(QMainWindow):
         font_dim.setPointSize(9)
         font_dim.setItalic(True)
         self.dimension_label.setFont(font_dim)
+        self.dimension_label.setStyleSheet("color: #4267B2;")
         grid.addWidget(self.dimension_label, 6, 0, 1, 2)
 
         # Buttons
-        buttons_layout = QHBoxLayout()
-        self.solve_button = QPushButton("Resolver")
+        buttons_layout = QVBoxLayout()
+        buttons_layout.setSpacing(10)
+        
+        self.solve_button = QPushButton("Calcular Resultado")
         self.solve_button.clicked.connect(self._on_solve_clicked)
+        
+        self.steps_button = QPushButton("Mostrar Pasos")
+        self.steps_button.clicked.connect(lambda: self.steps_scroll.setVisible(True))
+        
         self.clear_button = QPushButton("Limpiar")
         self.clear_button.clicked.connect(self._on_clear_clicked)
+        
         self.example_button = QPushButton("Ejemplo")
         self.example_button.clicked.connect(self._on_example_clicked)
+        
+        # Style for buttons
+        button_style = """
+            QPushButton {
+                background-color: #4267B2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #365A9C;
+            }
+            QPushButton:pressed {
+                background-color: #2A4A85;
+            }
+        """
+        
+        self.solve_button.setStyleSheet(button_style)
+        self.steps_button.setStyleSheet(button_style)
+        self.clear_button.setStyleSheet(button_style)
+        self.example_button.setStyleSheet(button_style)
+        
         buttons_layout.addWidget(self.solve_button)
+        buttons_layout.addWidget(self.steps_button)
         buttons_layout.addWidget(self.clear_button)
         buttons_layout.addWidget(self.example_button)
 
         layout.addSpacing(10)
         layout.addLayout(buttons_layout)
-
         layout.addStretch()
 
         return panel
 
+    def _create_theory_page(self) -> QWidget:
+        """Página con teoría básica de Álgebra Lineal."""
+        page = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(40, 20, 40, 20)
+        page.setLayout(layout)
+
+        title = QLabel("Teoría de Matrices")
+        font = QFont()
+        font.setPointSize(24)
+        font.setBold(True)
+        title.setFont(font)
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: #1E2A4A; margin-bottom: 30px;")
+        layout.addWidget(title)
+
+        # Create a scroll area for the theory content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: white;
+            }
+        """)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout()
+        content_widget.setLayout(content_layout)
+        
+        # Theory content
+        theory_content = QTextEdit()
+        theory_content.setReadOnly(True)
+        theory_content.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                padding: 20px;
+                color: #2A2A2A;
+                font-size: 11pt;
+            }
+        """)
+        
+        theory_content.setHtml("""
+            <h2 style="color: #1E2A4A;">Conceptos Esenciales de Álgebra Lineal</h2>
+            
+            <h3 style="color: #4267B2;">Matrices</h3>
+            <p>Una matriz es un arreglo rectangular de números reales, organizados en filas y columnas. 
+            Se utiliza para representar sistemas de ecuaciones lineales, transformaciones lineales y 
+            muchas otras relaciones matemáticas.</p>
+            
+            <h3 style="color: #4267B2;">Sistemas de Ecuaciones Lineales</h3>
+            <p>Un sistema de ecuaciones lineales es un conjunto de ecuaciones lineales que comparten 
+            las mismas variables. La solución del sistema es el conjunto de valores que satisfacen 
+            todas las ecuaciones simultáneamente.</p>
+            
+            <h3 style="color: #4267B2;">Forma Escalonada Reducida</h3>
+            <p>Una matriz está en forma escalonada reducida cuando:</p>
+            <ul>
+                <li>Todas las filas cero están en la parte inferior</li>
+                <li>El primer elemento no nulo de cada fila (pivote) es 1</li>
+                <li>El pivote de cada fila está a la derecha del pivote de la fila anterior</li>
+                <li>Todos los elementos por encima y por debajo de un pivote son cero</li>
+            </ul>
+            
+            <h3 style="color: #4267B2;">Eliminación de Gauss-Jordan</h3>
+            <p>Es un algoritmo para resolver sistemas de ecuaciones lineales. El procedimiento consiste 
+            en realizar operaciones elementales de fila para reducir la matriz aumentada a su forma 
+            escalonada reducida. Las operaciones permitidas son:</p>
+            <ul>
+                <li>Intercambiar dos filas</li>
+                <li>Multiplicar una fila por una constante no nula</li>
+                <li>Sumar a una fila un múltiplo de otra</li>
+            </ul>
+            
+            <h3 style="color: #4267B2;">Tipos de Solución</h3>
+            <p>Un sistema de ecuaciones lineales puede tener:</p>
+            <ul>
+                <li><strong>Solución Única:</strong> El sistema tiene exactamente una solución</li>
+                <li><strong>Infinitas Soluciones:</strong> El sistema tiene un número infinito de soluciones</li>
+                <li><strong>Sistema Inconsistente:</strong> El sistema no tiene solución</li>
+            </ul>
+        """)
+        
+        content_layout.addWidget(theory_content)
+        scroll.setWidget(content_widget)
+        layout.addWidget(scroll)
+        
+        return page
+
     def _create_result_panel(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(15)
         panel.setLayout(layout)
 
         # Augmented matrix table title
         title = QLabel("Matriz aumentada del sistema")
         font_title = QFont()
-        font_title.setPointSize(11)
+        font_title.setPointSize(14)
         font_title.setBold(True)
         title.setFont(font_title)
+        title.setStyleSheet("color: #1E2A4A;")
         layout.addWidget(title)
 
         # Table for augmented matrix [A|b]
         self.table = QTableWidget()
-        # Use an expanding size policy so the table can grow within the scroll area
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        # Provide a reasonable default height; it will expand if rows > 8
         self.table.setFixedHeight(220)
-        # Enable scroll bars when the content exceeds the viewport
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # Allow smooth pixel-based scrolling
         self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        # Adjust columns interactively rather than stretching them all to fit; this
-        # ensures a horizontal scrollbar appears when there are many variables
+        
+        # Style the table
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                gridline-color: #E5E7EB;
+                color: #2A2A2A;
+            }
+            QHeaderView::section {
+                background-color: #F3F4F6;
+                color: #2A2A2A;
+                padding: 6px;
+                border: none;
+                font-weight: bold;
+            }
+        """)
+        
         header = self.table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(QHeaderView.Interactive)
         layout.addWidget(self.table)
 
-        # Separator line
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(separator)
-
         # Solution output area
         solution_title = QLabel("Resultado")
-        font_solution = QFont()
-        font_solution.setPointSize(11)
-        font_solution.setBold(True)
-        solution_title.setFont(font_solution)
+        solution_title.setFont(font_title)
+        solution_title.setStyleSheet("color: #1E2A4A;")
         layout.addWidget(solution_title)
 
         # Label for state (UNICA, INFINITAS, INCONSISTENTE)
         self.state_label = QLabel()
         font_state = QFont()
-        font_state.setPointSize(10)
+        font_state.setPointSize(12)
         font_state.setBold(True)
         self.state_label.setFont(font_state)
+        self.state_label.setStyleSheet("color: #4267B2; margin-bottom: 10px;")
         layout.addWidget(self.state_label)
 
         # Container for variable values or parametric solution
         self.solution_container = QVBoxLayout()
+        self.solution_container.setSpacing(5)
         layout.addLayout(self.solution_container)
 
         # Scroll area for steps
         steps_title = QLabel("Pasos Gauss-Jordan")
-        steps_title.setFont(font_solution)
+        steps_title.setFont(font_title)
+        steps_title.setStyleSheet("color: #1E2A4A; margin-top: 20px;")
         layout.addWidget(steps_title)
 
         self.steps_scroll = QScrollArea()
         self.steps_scroll.setWidgetResizable(True)
+        self.steps_scroll.setFrameShape(QFrame.NoFrame)
+        self.steps_scroll.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                background-color: white;
+            }
+        """)
+        
         self.steps_container = QWidget()
         self.steps_layout = QVBoxLayout()
+        self.steps_layout.setContentsMargins(15, 15, 15, 15)
+        self.steps_layout.setSpacing(15)
         self.steps_container.setLayout(self.steps_layout)
         self.steps_scroll.setWidget(self.steps_container)
+        self.steps_scroll.setVisible(False)  # Initially hidden
         layout.addWidget(self.steps_scroll)
 
         return panel
@@ -294,73 +478,134 @@ class MatrixCalculatorWindow(QMainWindow):
     # Navigation and Pages
     # ------------------------------------------------------------------
     def _create_nav_panel(self) -> QWidget:
-        """Create the lateral navigation panel with page selection buttons.
-
-        The navigation panel appears on the far left of the window and
-        persists across all pages. Each button switches the stacked
-        widget to the corresponding page.
-        """
+        """Create the lateral navigation panel with page selection buttons."""
         panel = QFrame()
         panel.setObjectName("navPanel")
-        panel.setFixedWidth(180)
+        panel.setFixedWidth(250)
+        panel.setStyleSheet("""
+            #navPanel {
+                background-color: #2A3858;
+            }
+        """)
+
         nav_layout = QVBoxLayout()
         nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.setSpacing(0)
         panel.setLayout(nav_layout)
 
-        # Application title on top of nav panel
-        title_label = QLabel("Calculadora")
+        # Logo / Title
+        logo_widget = QWidget()
+        logo_widget.setFixedHeight(80)
+        logo_layout = QVBoxLayout()
+        logo_widget.setLayout(logo_layout)
+        logo_widget.setStyleSheet("background-color: #1E2A4A;")
+        
+        title_label = QLabel("MatrixCalc")
         title_font = QFont()
-        title_font.setPointSize(14)
+        title_font.setPointSize(16)
         title_font.setBold(True)
         title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("color: #ffffff; padding: 16px;")
-        nav_layout.addWidget(title_label)
+        title_label.setStyleSheet("color: #FFFFFF; padding: 8px;")
+        logo_layout.addWidget(title_label)
+        
+        nav_layout.addWidget(logo_widget)
 
-        # Buttons for navigation
-        # Button for calculator page
-        self.btn_calc_page = QPushButton("Resolver")
-        self.btn_calc_page.setObjectName("navButton")
-        self.btn_calc_page.setCursor(Qt.PointingHandCursor)
-        # Make buttons checkable and mutually exclusive to allow highlighting of the active page
-        self.btn_calc_page.setCheckable(True)
-        self.btn_calc_page.setAutoExclusive(True)
-        self.btn_calc_page.clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        nav_layout.addWidget(self.btn_calc_page)
+        # Navigation buttons
+        nav_buttons = [
+            ("Menú principal", 0),
+            ("Calculadora", 1),
+            ("Teoría", 2)
+        ]
+        
+        self.nav_buttons = []
+        
+        for text, index in nav_buttons:
+            btn = QPushButton(text)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCheckable(True)
+            btn.setAutoExclusive(True)
+            btn.clicked.connect(lambda checked, idx=index: self.stack.setCurrentIndex(idx))
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    color: #FFFFFF;
+                    padding: 15px 20px;
+                    text-align: left;
+                    font-size: 11pt;
+                }
+                QPushButton:hover {
+                    background-color: #3A4868;
+                }
+                QPushButton:checked {
+                    background-color: #4267B2;
+                    font-weight: bold;
+                }
+            """)
+            nav_layout.addWidget(btn)
+            self.nav_buttons.append(btn)
+            
+            if index == 0:
+                self.btn_home_page = btn
+            elif index == 1:
+                self.btn_calc_page = btn
+            elif index == 2:
+                self.btn_theory_page = btn
 
-        # Button for home page (hola mundo)
-        self.btn_home_page = QPushButton("Hola Mundo")
-        self.btn_home_page.setObjectName("navButton")
-        self.btn_home_page.setCursor(Qt.PointingHandCursor)
-        self.btn_home_page.setCheckable(True)
-        self.btn_home_page.setAutoExclusive(True)
-        self.btn_home_page.clicked.connect(lambda: self.stack.setCurrentIndex(1))
-        nav_layout.addWidget(self.btn_home_page)
-
+        # Logout button at the bottom
         nav_layout.addStretch()
+        logout_btn = QPushButton("Cerrar Sesión")
+        logout_btn.setCursor(Qt.PointingHandCursor)
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #FFFFFF;
+                padding: 15px 20px;
+                text-align: left;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #3A4868;
+            }
+        """)
+        nav_layout.addWidget(logout_btn)
+
         return panel
 
     def _create_calculator_page(self) -> QWidget:
-        """Create the calculator page with configuration and result panels.
-
-        This page combines the existing configuration panel and the
-        result panel into a single layout. The result panel is
-        wrapped in a QScrollArea to ensure that it remains scrollable
-        when the number of variables (columns) exceeds the available
-        width or when the steps list grows large.
-        """
+        """Create the calculator page with configuration and result panels."""
         page = QWidget()
-        layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(16)
-        page.setLayout(layout)
+        page.setStyleSheet("background-color: #FFFFFF;")
+        
+        # Create top bar
+        top_bar = QWidget()
+        top_bar.setFixedHeight(60)
+        top_bar.setStyleSheet("background-color: #1E2A4A;")
+        top_layout = QHBoxLayout()
+        top_bar.setLayout(top_layout)
+        
+        title = QLabel("Calculadora de Matrices")
+        title_font = QFont()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setStyleSheet("color: #FFFFFF;")
+        top_layout.addWidget(title)
+        
+        # Main content
+        content_widget = QWidget()
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(20)
+        content_widget.setLayout(content_layout)
 
         # Configuration panel on the left
         self.config_panel = self._create_config_panel()
-        layout.addWidget(self.config_panel)
+        content_layout.addWidget(self.config_panel, 1)
 
-        # Result panel wrapped in a scroll area on the right
+        # Result panel on the right
         result_panel = self._create_result_panel()
         result_scroll = QScrollArea()
         result_scroll.setWidgetResizable(True)
@@ -368,151 +613,166 @@ class MatrixCalculatorWindow(QMainWindow):
         result_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         result_scroll.setFrameShape(QFrame.NoFrame)
         result_scroll.setWidget(result_panel)
-        layout.addWidget(result_scroll, stretch=1)
+        content_layout.addWidget(result_scroll, 2)
+
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(top_bar)
+        main_layout.addWidget(content_widget)
+        page.setLayout(main_layout)
 
         return page
 
     def _create_home_page(self) -> QWidget:
-        """Create a placeholder page displaying a greeting message.
-
-        The user requested a blank page (black background) with a
-        'hola mundo' message. This page will serve as a template for
-        future features. It uses the same dark theme as the rest of
-        the application and includes the navigation panel on the left.
-        """
+        """Create the home page with matrix type selection."""
         page = QWidget()
-        vbox = QVBoxLayout()
-        vbox.setContentsMargins(40, 40, 40, 40)
-        vbox.setSpacing(20)
-        page.setLayout(vbox)
+        page.setStyleSheet("background-color: #FFFFFF;")
+        
+        # Create top bar
+        top_bar = QWidget()
+        top_bar.setFixedHeight(60)
+        top_bar.setStyleSheet("background-color: #1E2A4A;")
+        top_layout = QHBoxLayout()
+        top_bar.setLayout(top_layout)
+        
+        title = QLabel("MatrixCalc - Menú Principal")
+        title_font = QFont()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setStyleSheet("color: #FFFFFF;")
+        top_layout.addWidget(title)
+        
+        # Main content
+        content_widget = QWidget()
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(40, 40, 40, 40)
+        content_widget.setLayout(content_layout)
 
-        greeting = QLabel("Hola mundo")
+        title = QLabel("Elige tu matriz")
         font = QFont()
-        font.setPointSize(20)
+        font.setPointSize(24)
         font.setBold(True)
-        greeting.setFont(font)
-        greeting.setAlignment(Qt.AlignCenter)
-        greeting.setStyleSheet("color: #ffffff;")
-        vbox.addStretch()
-        vbox.addWidget(greeting)
-        vbox.addStretch()
+        title.setFont(font)
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: #1E2A4A; margin-bottom: 10px;")
+        content_layout.addWidget(title)
+
+        subtitle = QLabel("Selecciona el tipo de matriz para comenzar")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("color: #6B7280; font-size: 14px; margin-bottom: 40px;")
+        content_layout.addWidget(subtitle)
+
+        # Opciones de selección
+        options_layout = QHBoxLayout()
+        options_layout.setSpacing(30)
+
+        btn_nxn = QPushButton("Matriz nxn\n(Determinantes, inversa, sistemas)")
+        btn_nxn.setFixedSize(200, 120)
+        btn_nxn.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+        btn_nxn.setStyleSheet("""
+            QPushButton {
+                background-color: #4267B2;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #365A9C;
+            }
+        """)
+        
+        btn_nxm = QPushButton("Matriz nxm\n(Reducción, forma escalonada)")
+        btn_nxm.setFixedSize(200, 120)
+        btn_nxm.clicked.connect(lambda: self.stack.setCurrentIndex(1))
+        btn_nxm.setStyleSheet("""
+            QPushButton {
+                background-color: #4267B2;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #365A9C;
+            }
+        """)
+
+        options_layout.addStretch()
+        options_layout.addWidget(btn_nxn)
+        options_layout.addWidget(btn_nxm)
+        options_layout.addStretch()
+
+        content_layout.addLayout(options_layout)
+        content_layout.addStretch()
+
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(top_bar)
+        main_layout.addWidget(content_widget)
+        page.setLayout(main_layout)
 
         return page
 
-    def _apply_dark_theme(self) -> None:
-        """Apply a custom dark theme to the entire application.
-
-        This method sets a dark color palette and styles for commonly
-        used widgets. It aims to approximate the aesthetic shown in
-        the screenshot provided by the user, with deep background
-        colours and muted accent tones.
-        """
+    def _apply_modern_theme(self) -> None:
+        """Apply a modern light theme to the entire application."""
         palette = QPalette()
-        # Set a deep navy background and light text for a modern UAM-inspired look
-        palette.setColor(QPalette.Window, QColor(10, 19, 43))          # dark navy for main window
-        palette.setColor(QPalette.WindowText, QColor(230, 239, 251))   # almost white text
-        palette.setColor(QPalette.Base, QColor(18, 29, 61))            # inputs & table background
-        palette.setColor(QPalette.AlternateBase, QColor(14, 24, 50))   # alternate rows
-        palette.setColor(QPalette.Text, QColor(230, 239, 251))         # input text color
-        palette.setColor(QPalette.Button, QColor(27, 44, 76))          # buttons background
-        palette.setColor(QPalette.ButtonText, QColor(230, 239, 251))   # button text
-        palette.setColor(QPalette.Highlight, QColor(64, 125, 188))     # selection highlight
+        palette.setColor(QPalette.Window, QColor(255, 255, 255))
+        palette.setColor(QPalette.WindowText, QColor(42, 42, 42))
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))
+        palette.setColor(QPalette.AlternateBase, QColor(248, 250, 255))
+        palette.setColor(QPalette.Text, QColor(42, 42, 42))
+        palette.setColor(QPalette.Button, QColor(66, 103, 178))
+        palette.setColor(QPalette.ButtonText, QColor(255, 255, 255))
+        palette.setColor(QPalette.Highlight, QColor(66, 103, 178))
         palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
         self.setPalette(palette)
 
-        # Global style sheet to control widget appearance. Increase base font size for readability.
-        self.setStyleSheet(
-            """
+        # Global style sheet
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #FFFFFF;
+            }
             QWidget {
                 font-size: 10.5pt;
             }
             QLabel {
-                color: #e6effb;
-            }
-            QGroupBox {
-                border: 1px solid #2b4168;
-                border-radius: 8px;
-                padding: 10px;
-                margin-top: 10px;
-                background-color: #11284a;
-            }
-            QGroupBox:title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 3px;
-            }
-            QSpinBox, QComboBox {
-                background-color: #1c3156;
-                border: 1px solid #365a8e;
-                border-radius: 4px;
-                padding: 2px 4px;
-                color: #e6effb;
-                selection-background-color: #407dbc;
-                selection-color: #ffffff;
-            }
-            QPushButton {
-                background-color: #365a8e;
-                border: 1px solid #407dbc;
-                border-radius: 4px;
-                padding: 6px 14px;
-                color: #ffffff;
-            }
-            QPushButton:hover {
-                background-color: #407dbc;
-            }
-            QPushButton:pressed {
-                background-color: #2a4475;
-            }
-            QTableWidget {
-                background-color: #1c3156;
-                gridline-color: #2f4c77;
-                color: #e6effb;
-            }
-            QHeaderView::section {
-                background-color: #152b51;
-                color: #e6effb;
-                padding: 4px;
-                border: 1px solid #2b4168;
-                font-weight: bold;
-            }
-            /* Navigation panel styling */
-            #navPanel {
-                background-color: #11284a;
-                border-right: 1px solid #2b4168;
-            }
-            #navButton {
-                background-color: transparent;
-                border: none;
-                color: #e6effb;
-                padding: 12px 16px;
-                text-align: left;
-                font-size: 11pt;
-            }
-            #navButton:hover {
-                background-color: #1c3156;
-            }
-            #navButton:checked {
-                background-color: #365a8e;
+                color: #2A2A2A;
             }
             QScrollArea {
                 border: none;
             }
-            QScrollArea > QWidget > QWidget {
-                background-color: #1c3156;
+            QScrollBar:vertical {
+                border: none;
+                background: #F3F4F6;
+                width: 10px;
+                margin: 0px;
             }
-            """
-        )
+            QScrollBar::handle:vertical {
+                background: #D1D5DB;
+                min-height: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9CA3AF;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
 
     # ------------------------------------------------------------------
     # Event Handlers
     # ------------------------------------------------------------------
     def _on_dimensions_changed(self) -> None:
-        """Handle changes to the number of rows or columns.
-
-        When the user adjusts either spin box, update the internal
-        dimension state and resize the table accordingly. Also update
-        the dimension label to reflect the new matrix size.
-        """
+        """Handle changes to the number of rows or columns."""
         m = self.rows_spin.value()
         n = self.cols_spin.value()
         self.view_model.rows = m
@@ -557,12 +817,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self._clear_steps_display()
 
     def _on_example_clicked(self) -> None:
-        """Fill the table with a simple example matrix and vector.
-
-        The example uses small integer values so that the resulting
-        solution is easy to verify manually. The number of rows and
-        columns currently selected determine the size of the example.
-        """
+        """Fill the table with a simple example matrix and vector."""
         m = self.rows_spin.value()
         n = self.cols_spin.value()
         # Example: A is identity-like with sequential numbers; b is 1..m
@@ -582,13 +837,7 @@ class MatrixCalculatorWindow(QMainWindow):
     # UI Update Helpers
     # ------------------------------------------------------------------
     def _update_table_dimensions(self) -> None:
-        """Resize the table to match the current rows and columns.
-
-        The table will have `rows` rows and `cols + 1` columns (the
-        extra column corresponds to the vector b). Column headers are
-        labelled x1..xn and b. Existing items are preserved where
-        possible; new cells are initialized empty.
-        """
+        """Resize the table to match the current rows and columns."""
         m = self.view_model.rows
         n = self.view_model.cols
         current_rows = self.table.rowCount()
@@ -603,13 +852,11 @@ class MatrixCalculatorWindow(QMainWindow):
             # Set column headers
             headers = [f"x{j + 1}" for j in range(n)] + ["b"]
             self.table.setHorizontalHeaderLabels(headers)
-        # Resize headers to fit contents; use stretch on vertical but interactive on horizontal
-        # Horizontal header mode is set in _create_result_panel to Interactive; keep it
+        
         self.table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
 
-        # Adjust table height based on number of rows so it grows with more equations.
-        # Each row is roughly 24 px high; add extra margin to account for header.
+        # Adjust table height based on number of rows
         row_height = 24
         header_height = 30
         desired = min(320, row_height * m + header_height)
