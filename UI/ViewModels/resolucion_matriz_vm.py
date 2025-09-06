@@ -44,6 +44,19 @@ from Operadores.SolucionGaussJordan.solucion_gauss_jordan import SolucionadorGau
 from Operadores.estrategia_pivoteo import PivoteoParcial
 
 
+
+
+class StepVM:
+    number: int
+    description: str
+    after_matrix: List[List[float]]
+    pivot_row: int | None = None
+    pivot_col: int | None = None
+
+
+
+
+
 @dataclass
 class StepVM:
     """Represents a single row operation performed during Gauss–Jordan.

@@ -1,4 +1,135 @@
 from __future__ import annotations
+from typing import List, Optional, Callable
+from Models.matriz import Matriz
+from .operador_filas import OperadorFilas
+from .estrategia_pivoteo import EstrategiaPivoteo
+from .registrador import RegistradorOperaciones, PasoGaussJordan
+from UI.ViewModels.modelos_rref import ResultadoRREF, StepVM
+
+
+
+class SolucionadorGaussJordan:
+    """Resuelve sistemas lineales usando eliminación de Gauss-Jordan."""
+
+    def __init__(self, eps: float = 1e-12) -> None:
+        self._eps = eps
+
+    def a_forma_escalonada_reducida(
+        self,
+        matriz_aumentada: Matriz,
+        num_variables: int,
+        pivoteo: EstrategiaPivoteo,
+        registrador: Optional[RegistradorOperaciones] = None,
+        callback_registro: Optional[Callable[[PasoGaussJordan], None]] = None
+    ) -> ResultadoRREF:
+        """
+        Transforma una matriz aumentada a su forma escalonada reducida (RREF)
+        y registra los pasos si se proporciona un registrador o callback.
+        """
+        # Si hay callback y no registrador, creamos un registrador temporal
+        if callback_registro and registrador is None:
+            registrador = RegistradorOperaciones(callback=callback_registro)
+
+        m = matriz_aumentada.clonar()
+        op = OperadorFilas(m)
+        r = 0  # fila actual de pivote
+        columnas_pivote: List[int] = []
+
+        for c in range(num_variables):  # solo columnas de variables (excluye término independiente)
+            if r >= m.filas:
+                break
+
+            # Seleccionar pivote
+            fila_piv = pivoteo.seleccionar_pivote(m, c, r, eps=self._eps)
+            if fila_piv is None:
+                continue
+
+            # Intercambiar si es necesario
+            if fila_piv != r:
+                antes = m.como_lista() if registrador else None
+                op.intercambiar(fila_piv, r)
+                if registrador:
+                    registrador.nuevo_paso(
+                        operacion="INTERCAMBIO_FILAS",
+                        pivote_fila=r, pivote_col=c,
+                        filas_afectadas=[fila_piv, r],
+                        antes=antes, despues=m.como_lista(),
+                        descripcion=f"Intercambio R{fila_piv} <-> R{r}"
+                    )
+
+            # Normalizar pivote a 1
+            antes = m.como_lista() if registrador else None
+            op.normalizar_pivote(r, c, eps=self._eps)
+            if registrador:
+                registrador.nuevo_paso(
+                    operacion="NORMALIZAR_PIVOTE",
+                    pivote_fila=r, pivote_col=c,
+                    antes=antes, despues=m.como_lista(),
+                    descripcion=f"Normalizar pivote en ({r},{c}) a 1"
+                )
+
+            # Anular por debajo
+            for i in range(r + 1, m.filas):
+                val = m.obtener(i, c)
+                if abs(val) > self._eps:
+                    antes = m.como_lista() if registrador else None
+                    op.combinar(i, r, -val)  # Ri <- Ri - val * Rr
+                    if registrador:
+                        registrador.nuevo_paso(
+                            operacion="ELIMINAR_DEBAJO",
+                            pivote_fila=r, pivote_col=c,
+                            filas_afectadas=[i],
+                            factor=-val,
+                            antes=antes, despues=m.como_lista(),
+                            descripcion=f"R{i} <- R{i} - ({val:.6g}) * R{r}"
+                        )
+
+            # Anular por encima
+            for i in range(0, r):
+                val = m.obtener(i, c)
+                if abs(val) > self._eps:
+                    antes = m.como_lista() if registrador else None
+                    op.combinar(i, r, -val)  # Ri <- Ri - val * Rr
+                    if registrador:
+                        registrador.nuevo_paso(
+                            operacion="ELIMINAR_ENCIMA",
+                            pivote_fila=r, pivote_col=c,
+                            filas_afectadas=[i],
+                            factor=-val,
+                            antes=antes, despues=m.como_lista(),
+                            descripcion=f"R{i} <- R{i} - ({val:.6g}) * R{r}"
+                        )
+
+            # Registrar fila y columna de pivote para StepVM
+            if registrador:
+                last_step = registrador.pasos[-1] if registrador.pasos else None
+                if last_step:
+                    # Convertir a StepVM
+                    step_vm = StepVM(
+                        number=len(registrador.pasos),
+                        description=last_step.descripcion,
+                        after_matrix=m.como_lista(),
+                        pivot_row=r,
+                        pivot_col=c
+                    )
+                    registrador.steps_vm.append(step_vm)
+
+            columnas_pivote.append(c)
+            r += 1
+
+        return ResultadoRREF(
+            matriz_rref=m,
+            columnas_pivote=columnas_pivote,
+            rango=len(columnas_pivote),
+            steps=[step for step in getattr(registrador, "steps_vm", [])] if registrador else []
+        )
+
+
+
+
+
+
+'''from __future__ import annotations
 from typing import List, Optional, Tuple
 from Models.matriz import Matriz
 from .operador_filas import OperadorFilas
@@ -103,4 +234,4 @@ class ReductorEscalonado:
             columnas_pivote.append(c)
             r += 1
 
-        return ResultadoRREF(matriz_rref=m, columnas_pivote=columnas_pivote, rango=len(columnas_pivote))
+        return ResultadoRREF(matriz_rref=m, columnas_pivote=columnas_pivote, rango=len(columnas_pivote))'''

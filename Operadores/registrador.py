@@ -1,6 +1,27 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
+from typing import List, Optional
+
+class PasoGaussJordan:
+    def __init__(
+        self,
+        numero: int,
+        operacion: str,
+        pivote_fila: Optional[int],
+        pivote_col: Optional[int],
+        filas_afectadas: List[int],
+        descripcion: str,
+        matriz: List[List[float]]
+    ):
+        self.numero = numero                # número del paso
+        self.operacion = operacion          # tipo de operación (ej: "F2 <- F2 - 3F1")
+        self.pivote_fila = pivote_fila      # fila del pivote usado en este paso
+        self.pivote_col = pivote_col        # columna del pivote
+        self.filas_afectadas = filas_afectadas  # filas modificadas en este paso
+        self.descripcion = descripcion      # texto explicativo
+        self.matriz = matriz                # copia de la matriz después de este paso
+
 
 
 Operacion = Literal[
