@@ -1,0 +1,1 @@
+Solo se ve en la GUI pero no se guarda como "historial", voy a ver si agrego eso.

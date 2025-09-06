@@ -1,4 +1,4 @@
-'''from __future__ import annotations
+from __future__ import annotations
 from typing import List, Optional
 from Operadores.sistema_lineal import SistemaLineal
 from .solucion import Solucion, Parametrica
@@ -15,10 +15,11 @@ class SolucionadorGaussJordan(Solucionador):
     - Si 'registrar_pasos' es True, adjunta el historial de operaciones.
     """
 
-    def __init__(self, eps: float = 1e-12, pivoteo: Optional[EstrategiaPivoteo] = None):
+    def __init__(self, eps: float = 1e-12, pivoteo: Optional[EstrategiaPivoteo] = None,
+                pivot_callback: Optional[callable] = None):
         self._eps = eps
         self._pivoteo = pivoteo or PivoteoParcial()
-        self._reductor = ReductorEscalonado(eps=eps)
+        self._reductor = ReductorEscalonado(eps=eps, pivot_callback=pivot_callback)
 
     def resolver(self, sistema: SistemaLineal, registrar_pasos: bool = False) -> Solucion:
         A = sistema.A
@@ -121,137 +122,5 @@ class SolucionadorGaussJordan(Solucionador):
         for i in range(R.filas):
             if abs(R.obtener(i, col_pivote)) > self._eps:
                 return i
-        raise RuntimeError("No se encontró fila de pivote para la columna especificada.")'''
-
-from __future__ import annotations
-from typing import List, Optional
-from Operadores.sistema_lineal import SistemaLineal
-from .solucion import Solucion, Parametrica
-from .solucionador import Solucionador
-from Operadores.estrategia_pivoteo import PivoteoParcial, EstrategiaPivoteo
-from Operadores.reductor_escalonado import ReductorEscalonado
-from Operadores.registrador import RegistradorOperaciones, PasoGaussJordan
-
-
-class SolucionadorGaussJordan(Solucionador):
-    """
-    Resuelve A x = b sobre la matriz aumentada [A|b] llevando a RREF (Gauss-Jordan).
-    - Detecta inconsistencia / solución única / infinitas soluciones.
-    - Si 'registrar_pasos' es True, adjunta el historial de operaciones con matriz en cada paso.
-    """
-
-    def __init__(self, eps: float = 1e-12, pivoteo: Optional[EstrategiaPivoteo] = None):
-        self._eps = eps
-        self._pivoteo = pivoteo or PivoteoParcial()
-        self._reductor = ReductorEscalonado(eps=eps)
-
-    def resolver(self, sistema: SistemaLineal, registrar_pasos: bool = False) -> Solucion:
-        A = sistema.A
-        b = sistema.b
-        aug = sistema.como_matriz_aumentada()
-        n_vars = sistema.num_variables()
-
-        registrador = RegistradorOperaciones() if registrar_pasos else None
-
-        # Función interna para registrar pasos con matriz completa
-        def registrar(paso_info):
-            if registrador:
-                registrador.agregar_paso(
-                    PasoGaussJordan(
-                        numero=paso_info.numero,
-                        operacion=paso_info.operacion,
-                        pivote_fila=paso_info.pivote_fila,
-                        pivote_col=paso_info.pivote_col,
-                        filas_afectadas=paso_info.filas_afectadas,
-                        descripcion=paso_info.descripcion,
-                        matriz=[fila[:] for fila in aug]  # copia profunda del estado actual
-                    )
-                )
-
-        res = self._reductor.a_forma_escalonada_reducida(
-            matriz_aumentada=aug,
-            num_variables=n_vars,
-            pivoteo=self._pivoteo,
-            registrador=registrador,
-            callback_registro=registrar  # Pasamos callback para que capture la matriz
-        )
-
-        R = res.matriz_rref
-        pivots = res.columnas_pivote
-
-        # Diagnóstico de inconsistencia: fila [0 ... 0 | c] con c != 0
-        col_last = R.columnas - 1
-        inconsistent = False
-        for i in range(R.filas):
-            all_zero = all(abs(R.obtener(i, j)) <= self._eps for j in range(n_vars))
-            if all_zero and abs(R.obtener(i, col_last)) > self._eps:
-                inconsistent = True
-                break
-
-        if inconsistent:
-            return Solucion(
-                estado="INCONSISTENTE",
-                columnas_pivote=pivots,
-                variables_libres=[j for j in range(n_vars) if j not in pivots],
-                parametrica=None,
-                historial=registrador.historial if registrador else None
-            )
-
-        rank = len(pivots)
-        free_vars = [j for j in range(n_vars) if j not in pivots]
-
-        # Única solución si rank == n_vars
-        if rank == n_vars:
-            x = [0.0] * n_vars
-            for pcol in pivots:
-                fila = self._fila_pivote(R, pcol)
-                x[pcol] = R.obtener(fila, col_last)
-            return Solucion(
-                estado="UNICA",
-                x=x,
-                columnas_pivote=pivots,
-                variables_libres=free_vars,
-                parametrica=None,
-                historial=registrador.historial if registrador else None
-            )
-
-        # Infinitas soluciones: construir forma paramétrica
-        particular = [0.0] * n_vars
-        for pcol in pivots:
-            fila = self._fila_pivote(R, pcol)
-            particular[pcol] = R.obtener(fila, col_last)
-
-        direcciones: List[List[float]] = []
-        for f in free_vars:
-            v = [0.0] * n_vars
-            v[f] = 1.0
-            for pcol in pivots:
-                fila = self._fila_pivote(R, pcol)
-                coef = R.obtener(fila, f)
-                if abs(coef) > self._eps:
-                    v[pcol] = -coef
-            direcciones.append(v)
-
-        return Solucion(
-            estado="INFINITAS",
-            x=None,
-            columnas_pivote=pivots,
-            variables_libres=free_vars,
-            parametrica=Parametrica(
-                particular=particular,
-                direcciones=direcciones,
-                libres=free_vars
-            ),
-            historial=registrador.historial if registrador else None
-        )
-
-    def _fila_pivote(self, R: 'Matriz', col_pivote: int) -> int:
-        for i in range(R.filas):
-            if abs(R.obtener(i, col_pivote) - 1.0) <= self._eps:
-                return i
-        for i in range(R.filas):
-            if abs(R.obtener(i, col_pivote)) > self._eps:
-                return i
         raise RuntimeError("No se encontró fila de pivote para la columna especificada.")
-
 

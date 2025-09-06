@@ -30,7 +30,7 @@ pattern.
 """
 
 from __future__ import annotations
-
+from PySide6.QtCore import QObject, Signal
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -42,19 +42,6 @@ from Models.matriz import Matriz
 from Operadores.sistema_lineal import SistemaLineal
 from Operadores.SolucionGaussJordan.solucion_gauss_jordan import SolucionadorGaussJordan
 from Operadores.estrategia_pivoteo import PivoteoParcial
-
-
-
-
-class StepVM:
-    number: int
-    description: str
-    after_matrix: List[List[float]]
-    pivot_row: int | None = None
-    pivot_col: int | None = None
-
-
-
 
 
 @dataclass
@@ -159,7 +146,8 @@ class ResultVM:
     steps: Optional[List[StepVM]] = None
 
 
-class MatrixCalculatorViewModel:
+class MatrixCalculatorViewModel(QObject):
+    
     """View model orchestrating the process of solving linear systems.
 
     The view model stores the dimensions of the matrix and the chosen
@@ -170,9 +158,13 @@ class MatrixCalculatorViewModel:
     handling for user input should be done at the view layer; this
     class assumes the data passed in conforms to the expected shapes.
     """
+    pivot_selected = Signal(int, int) # Añadir esta línea
+    matrix_updated = Signal(list) # Opcional: para actualizar toda la matriz
+    step_completed = Signal(int, int, int, int)
 
     def __init__(self) -> None:
         # Default dimensions. The view can change these through its UI.
+        super().__init__() # Llamar al constructor de QObject
         self._rows: int = 2
         self._cols: int = 3  # number of variables; augmented matrix has cols+1 columns
         self._method: str = "Gauss-Jordan"
@@ -227,6 +219,17 @@ class MatrixCalculatorViewModel:
             If the shape of the augmented matrix does not match the
             expected dimensions.
         """
+        A_data = [row[:-1] for row in augmented]
+        b_data = [row[-1] for row in augmented]
+        A = Matriz(A_data)
+        sistema = SistemaLineal(A, b_data)
+
+        def emit_pivot_signal(row: int, col: int):
+                self.pivot_selected.emit(row, col)
+               
+        solver = SolucionadorGaussJordan(pivoteo=PivoteoParcial(), pivot_callback=emit_pivot_signal) # Modificar aquí
+        solucion = solver.resolver(sistema, registrar_pasos=True)
+
         if len(augmented) != self._rows:
             raise ValueError(
                 f"Se esperaban {self._rows} filas, pero se recibieron {len(augmented)}"
