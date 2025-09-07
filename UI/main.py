@@ -118,6 +118,12 @@ class MatrixCalculatorWindow(QMainWindow):
         # emergente al pulsar el botón "Ver pasos Gauss–Jordan".
         self._last_steps: List[StepVM] | None = None
 
+        # Información de diagnóstico del último resultado
+        # Columnas pivote (0‑based sobre A) y variables libres.
+        # Se usa para resaltar en la vista de pasos.
+        self._last_pivot_cols: List[int] | None = None
+        self._last_free_vars: List[int] | None = None
+
         # Controla si el panel de navegación está expandido o colapsado. Por
         # defecto comienza expandido. Este flag se alterna mediante
         # `_toggle_nav_panel` cuando el usuario pulsa el botón de menú.
@@ -244,7 +250,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self.table = QTableWidget()
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         # Altura inicial; se recalcula en _update_table_dimensions
-        self.table.setFixedHeight(220)
+        self.table.setFixedHeight(300)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
@@ -263,17 +269,35 @@ class MatrixCalculatorWindow(QMainWindow):
         # Sección de resultados
         solution_title = QLabel("Resultado")
         font_solution = QFont()
-        font_solution.setPointSize(14)
+        # Reducir ligeramente el tamaño para ahorrar espacio vertical
+        font_solution.setPointSize(13)
         font_solution.setBold(True)
         solution_title.setFont(font_solution)
         layout.addWidget(solution_title)
 
         self.state_label = QLabel()
         font_state = QFont()
-        font_state.setPointSize(12)
+        # Texto más compacto
+        font_state.setPointSize(11)
         font_state.setBold(True)
         self.state_label.setFont(font_state)
         layout.addWidget(self.state_label)
+
+        # Etiqueta de consistencia (consistente / inconsistente)
+        self.consistency_label = QLabel()
+        consistency_font = QFont()
+        consistency_font.setPointSize(10)
+        self.consistency_label.setFont(consistency_font)
+        self.consistency_label.setStyleSheet("color: #cbd7ea;")
+        layout.addWidget(self.consistency_label)
+
+        # Etiqueta de columnas pivote (siempre visible tras resolver)
+        self.pivots_label = QLabel()
+        piv_font = QFont()
+        piv_font.setPointSize(10)
+        self.pivots_label.setFont(piv_font)
+        self.pivots_label.setStyleSheet("color: #cbd7ea; margin-bottom: 2px;")
+        layout.addWidget(self.pivots_label)
 
         # Contenedor vertical para la solución dentro de un área de scroll
         self.solution_widget = QWidget()
@@ -646,11 +670,13 @@ class MatrixCalculatorWindow(QMainWindow):
             headers = [f"x{j + 1}" for j in range(n)] + ["b"]
             self.table.setHorizontalHeaderLabels(headers)
 
-        # Ajuste de la altura de la tabla (capada)
-        row_height = 30
-        header_height = 30
-        desired = min(360, row_height * m + header_height)
+        # Ajuste de la altura de la tabla (más alta)
+        row_height = 34
+        header_height = 34
+        desired = min(600, row_height * m + header_height)
         self.table.setFixedHeight(desired)
+        # Altura de filas por defecto para mejor legibilidad
+        self.table.verticalHeader().setDefaultSectionSize(row_height)
 
         # Redimensión de columnas según número de variables
         h_header = self.table.horizontalHeader()
@@ -747,14 +773,14 @@ class MatrixCalculatorWindow(QMainWindow):
             # Mostrar solución particular y direcciones asociadas a variables libres
             p = result.parametric
             particular_title = QLabel("Solución particular:")
-            particular_title.setStyleSheet("font-size: 13pt; font-weight: bold;")
+            particular_title.setStyleSheet("font-size: 12pt; font-weight: bold;")
             self.solution_container.addWidget(particular_title)
             for idx, value in enumerate(p.particular, start=1):
                 var_label = QLabel(f"x{idx} = {value:.6g}")
-                var_label.setStyleSheet("font-size: 12pt; color: #a3c2e3;")
+                var_label.setStyleSheet("font-size: 11pt; color: #a3c2e3;")
                 self.solution_container.addWidget(var_label)
             directions_title = QLabel("Direcciones asociadas a cada variable libre:")
-            directions_title.setStyleSheet("font-size: 13pt; font-weight: bold; margin-top: 8px;")
+            directions_title.setStyleSheet("font-size: 12pt; font-weight: bold; margin-top: 2px;")
             self.solution_container.addWidget(directions_title)
             for k, dir_vec in enumerate(p.directions):
                 items = []
@@ -763,26 +789,38 @@ class MatrixCalculatorWindow(QMainWindow):
                         items.append(f"{coef:.6g}·x{j+1}")
                 term = " + ".join(items) if items else "0"
                 dir_label = QLabel(f"t{k+1}: {term}")
-                dir_label.setStyleSheet("font-size: 12pt; color: #a3c2e3;")
+                dir_label.setStyleSheet("font-size: 11pt; color: #a3c2e3;")
                 self.solution_container.addWidget(dir_label)
         else:
             # Sistema inconsistente o sin solución particular conocida
             inc_label = QLabel("No existe solución.")
-            inc_label.setStyleSheet("font-size: 12pt; color: #e06c75;")
+            inc_label.setStyleSheet("font-size: 11pt; color: #e06c75;")
             self.solution_container.addWidget(inc_label)
 
         # Ajustar dinámicamente la altura de la zona de soluciones según
         # el número de elementos añadidos. Esto previene grandes espacios
         # en blanco cuando la solución es corta y evita un tamaño infinito
         # cuando hay muchas direcciones o variables. Cada elemento ocupa
-        # aproximadamente 28 píxeles de alto; se suma un margen extra.
+        # aproximadamente 22 píxeles de alto; se suma un margen extra.
         item_count = self.solution_container.count()
         if item_count:
-            estimated = 28 * item_count + 120
-            target = max(400, min(1000, estimated))
+            estimated = 22 * item_count + 60
+            target = max(320, min(900, estimated))
             self.solution_scroll.setMaximumHeight(target)
         else:
-            self.solution_scroll.setMaximumHeight(400)
+            self.solution_scroll.setMaximumHeight(320)
+
+        # Guardar pivotes y variables libres del resultado
+        self._last_pivot_cols = (result.pivot_cols or []) if hasattr(result, "pivot_cols") else []
+        self._last_free_vars = (result.free_vars or []) if hasattr(result, "free_vars") else []
+
+        # Mostrar consistencia independientemente del número de soluciones
+        is_consistent = result.status in ("UNICA", "INFINITAS")
+        self.consistency_label.setText("Sistema: Consistente" if is_consistent else "Sistema: Inconsistente")
+
+        # Mostrar lista de columnas pivote
+        piv_text = ", ".join([f"x{j+1}" for j in (self._last_pivot_cols or [])]) or "—"
+        self.pivots_label.setText(f"Columnas pivote: {piv_text}")
 
         # Mostrar los pasos de Gauss–Jordan. En esta versión nunca se
         # renderizan los pasos directamente en la página principal; se
@@ -806,7 +844,15 @@ class MatrixCalculatorWindow(QMainWindow):
 
     def _create_step_widget(self, step: StepVM) -> QWidget:
         """Crea un widget que representa un paso de Gauss–Jordan."""
-        widget = QGroupBox(f"Paso {step.number} – {step.description}")
+        # Construir título con columna/posición de pivote cuando esté disponible
+        pr = getattr(step, "pivot_row", None)
+        pc = getattr(step, "pivot_col", None)
+        pivot_txt = ""
+        if pr is not None and pc is not None:
+            pivot_txt = f"  |  pivote x{pc+1} en ({pr+1},{pc+1})"
+        widget = QGroupBox(f"Paso {step.number} – {step.description}{pivot_txt}")
+        # Texto del título en blanco para mejorar contraste
+        widget.setStyleSheet("QGroupBox { color: #ffffff; }")
         layout = QVBoxLayout()
         widget.setLayout(layout)
         matrix = step.after_matrix
@@ -819,10 +865,23 @@ class MatrixCalculatorWindow(QMainWindow):
         table.horizontalHeader().setVisible(False)
         table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         table.setFixedHeight(20 * rows + 2)
+        # Colores para resaltar
+        pivot_bg = QColor(64, 125, 188)   # azul acento
+        free_bg = QColor(58, 47, 107)     # violeta tenue
+        white_fg = QColor(255, 255, 255)
+
+        # Ya definidos arriba: pr, pc
+        # No resaltar variables libres en la tabla de pasos
+        free_cols: List[int] = []
         for i in range(rows):
             for j in range(cols):
                 item = QTableWidgetItem(f"{matrix[i][j]:.6g}")
                 item.setTextAlignment(Qt.AlignCenter)
+                item.setForeground(white_fg)
+                # Resaltar celda pivote si aplica
+                if pr is not None and pc is not None and i == pr and j == pc:
+                    item.setBackground(pivot_bg)
+                    item.setForeground(white_fg)
                 table.setItem(i, j, item)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(table)
@@ -847,6 +906,13 @@ class MatrixCalculatorWindow(QMainWindow):
         dialog.setWindowTitle("Pasos Gauss–Jordan")
         dialog.resize(700, 500)
         vbox = QVBoxLayout(dialog)
+        # Encabezado mostrando solo las columnas pivote
+        piv = self._last_pivot_cols or []
+        def _fmt_vars(indices: List[int]) -> str:
+            return ", ".join([f"x{idx+1}" for idx in indices]) if indices else "—"
+        header = QLabel(f"Columnas pivote: {_fmt_vars(piv)}")
+        header.setStyleSheet("color: #ffffff; font-weight: bold; margin-bottom: 6px;")
+        vbox.addWidget(header)
         # Contenedor de pasos dentro de un área de scroll
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
