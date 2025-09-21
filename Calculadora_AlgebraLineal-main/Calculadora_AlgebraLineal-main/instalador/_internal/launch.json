@@ -1,0 +1,8 @@
+{
+  "name": "UI.main",
+  "type": "python",
+  "request": "launch",
+  "module": "UI.main",
+  "justMyCode": true,
+  "env": { "PYTHONPATH": "${workspaceFolder}" }
+}
