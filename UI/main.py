@@ -505,6 +505,18 @@ class MatrixCalculatorWindow(QMainWindow):
         title.setFont(font)
         layout.addWidget(title)
 
+        # Pequeña explicación del método
+        explicacion_label = QLabel(
+            "En este apartado puedes explorar las propiedades básicas de los vectores en ℝⁿ:\n"
+            " • La suma de vectores (u + v) y la multiplicación por un escalar (α·u).\n"
+            " • Se verifican propiedades como la conmutatividad, asociatividad, existencia del cero y del opuesto.\n\n"
+            "Nota: El vector w es opcional y se usa en la verificación de la propiedad asociativa:\n"
+            "     (u + v) + w = u + (v + w)\n"
+        )
+        explicacion_label.setWordWrap(True)  # Para que el texto se ajuste a varias líneas
+        layout.addWidget(explicacion_label)
+
+
         # Instrucciones
         instr = QLabel("Introduce vectores separados por comas o espacios. Ej: (1, 2, 3) o 1 2 3")
         instr.setWordWrap(True)
@@ -529,6 +541,7 @@ class MatrixCalculatorWindow(QMainWindow):
 
         layout.addLayout(input_row)
 
+
         # Escalar
         scalar_row = QHBoxLayout()
         scalar_row.addWidget(QLabel("Escalar α:"))
@@ -544,9 +557,11 @@ class MatrixCalculatorWindow(QMainWindow):
         btn_sum = QPushButton("u + v")
         btn_scalar = QPushButton("α · u")
         btn_props = QPushButton("Verificar propiedades")
+        clear_button = QPushButton("Limpiar")
         btn_row.addWidget(btn_sum)
         btn_row.addWidget(btn_scalar)
         btn_row.addWidget(btn_props)
+        btn_row.addWidget(clear_button)
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
@@ -556,10 +571,20 @@ class MatrixCalculatorWindow(QMainWindow):
         self.vector_result_output.setMinimumHeight(260)
         layout.addWidget(self.vector_result_output)
 
+        # Función para limpiar campos
+        def limpiar_campos():
+            self.vector_u_input.clear()
+            self.vector_v_input.clear()
+            self.vector_w_input.clear()
+            self.scalar_input.clear()
+            self.vector_result_output.clear()
+
         # Conectar señales
         btn_sum.clicked.connect(self._on_sum_vectors)
         btn_scalar.clicked.connect(self._on_scalar_mult)
         btn_props.clicked.connect(self._on_verify_properties)
+        clear_button.clicked.connect(limpiar_campos)
+
 
         return page
 
