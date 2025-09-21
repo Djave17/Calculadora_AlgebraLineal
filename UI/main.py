@@ -45,10 +45,16 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractScrollArea,
     QDialog,
+    QLineEdit, 
+    QTextEdit,
 )
 
 # Importa el ViewModel desde el nuevo módulo "resolucion_matriz_vm".
 from UI.ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
+
+# Importa el ViewModel encargado de manejar las operaciones y verificaciones
+# relacionadas con las propiedades algebraicas de vectores en ℝⁿ
+from UI.ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
 
 
 class MatrixCalculatorWindow(QMainWindow):
@@ -79,6 +85,10 @@ class MatrixCalculatorWindow(QMainWindow):
         # Instanciar el view model
         self.view_model = MatrixCalculatorViewModel()
 
+        # ViewModel para la nueva página de propiedades de R^n
+        self.vector_vm = VectorPropiedadesViewModel()
+
+
         # ------------------------------------------------------------------
         # Construcción del layout principal
         # ------------------------------------------------------------------
@@ -97,11 +107,16 @@ class MatrixCalculatorWindow(QMainWindow):
         self.stack = QStackedWidget()
         root_layout.addWidget(self.stack, stretch=1)
 
+
         # Crear páginas de la aplicación
         self.calculator_page = self._create_calculator_page()
         self.home_page = self._create_home_page()
         self.stack.addWidget(self.calculator_page)
         self.stack.addWidget(self.home_page)
+
+        # Crear la nueva página (vectores) 
+        self.vector_props_page = self._create_vector_prop_page()
+        self.stack.addWidget(self.vector_props_page)
 
         # Seleccionar la página del cálculo por defecto
         self.btn_calc_page.setChecked(True)
@@ -399,13 +414,23 @@ class MatrixCalculatorWindow(QMainWindow):
         self.btn_calc_page.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         nav_layout.addWidget(self.btn_calc_page)
 
-        self.btn_home_page = QPushButton("Hola Mundo")
+        self.btn_home_page = QPushButton("MER")
         self.btn_home_page.setObjectName("navButton")
         self.btn_home_page.setCursor(Qt.PointingHandCursor)
         self.btn_home_page.setCheckable(True)
         self.btn_home_page.setAutoExclusive(True)
         self.btn_home_page.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         nav_layout.addWidget(self.btn_home_page)
+
+        self.btn_vector_props = QPushButton("Propiedades ℝⁿ")
+        self.btn_vector_props.setObjectName("navButton")
+        self.btn_vector_props.setCursor(Qt.PointingHandCursor)
+        self.btn_vector_props.setCheckable(True)
+        self.btn_vector_props.setAutoExclusive(True)
+        # Mover a la página 2 del stack
+        self.btn_vector_props.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        nav_layout.addWidget(self.btn_vector_props)
+
 
         # Espaciador final para empujar los botones hacia arriba
         nav_layout.addStretch()
@@ -453,7 +478,7 @@ class MatrixCalculatorWindow(QMainWindow):
         vbox.setSpacing(20)
         page.setLayout(vbox)
 
-        greeting = QLabel("Hola mundo")
+        greeting = QLabel("Método Escalonado Reducido (MER)")
         font = QFont()
         font.setPointSize(20)
         font.setBold(True)
@@ -465,6 +490,79 @@ class MatrixCalculatorWindow(QMainWindow):
         vbox.addStretch()
 
         return page
+    
+    def _create_vector_prop_page(self) -> QWidget:
+        """Página para operaciones y verificación de propiedades en R^n."""
+        page = QWidget()
+        layout = QVBoxLayout()
+        page.setLayout(layout)
+
+        # Título
+        title = QLabel("Propiedades algebraicas de ℝⁿ")
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        title.setFont(font)
+        layout.addWidget(title)
+
+        # Instrucciones
+        instr = QLabel("Introduce vectores separados por comas o espacios. Ej: (1, 2, 3) o 1 2 3")
+        instr.setWordWrap(True)
+        layout.addWidget(instr)
+
+        # Inputs: u, v, w (w opcional para asociatividad)
+        input_row = QHBoxLayout()
+        input_row.addWidget(QLabel("u ="))
+        self.vector_u_input = QLineEdit()
+        self.vector_u_input.setPlaceholderText("Ej: 1, 2, 3")
+        input_row.addWidget(self.vector_u_input)
+
+        input_row.addWidget(QLabel("v ="))
+        self.vector_v_input = QLineEdit()
+        self.vector_v_input.setPlaceholderText("Ej: 4, 5, 6")
+        input_row.addWidget(self.vector_v_input)
+
+        input_row.addWidget(QLabel("w (opcional) ="))
+        self.vector_w_input = QLineEdit()
+        self.vector_w_input.setPlaceholderText("Dejar vacío para usar w=(1,...,1)")
+        input_row.addWidget(self.vector_w_input)
+
+        layout.addLayout(input_row)
+
+        # Escalar
+        scalar_row = QHBoxLayout()
+        scalar_row.addWidget(QLabel("Escalar α:"))
+        self.scalar_input = QLineEdit()
+        self.scalar_input.setMaximumWidth(120)
+        self.scalar_input.setPlaceholderText("Ej: 2")
+        scalar_row.addWidget(self.scalar_input)
+        scalar_row.addStretch()
+        layout.addLayout(scalar_row)
+
+        # Botones de acción
+        btn_row = QHBoxLayout()
+        btn_sum = QPushButton("u + v")
+        btn_scalar = QPushButton("α · u")
+        btn_props = QPushButton("Verificar propiedades")
+        btn_row.addWidget(btn_sum)
+        btn_row.addWidget(btn_scalar)
+        btn_row.addWidget(btn_props)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        # Área de resultados (texto, readonly)
+        self.vector_result_output = QTextEdit()
+        self.vector_result_output.setReadOnly(True)
+        self.vector_result_output.setMinimumHeight(260)
+        layout.addWidget(self.vector_result_output)
+
+        # Conectar señales
+        btn_sum.clicked.connect(self._on_sum_vectors)
+        btn_scalar.clicked.connect(self._on_scalar_mult)
+        btn_props.clicked.connect(self._on_verify_properties)
+
+        return page
+
 
     # ------------------------------------------------------------------
     # Aplicación de tema oscuro y estilo
@@ -647,6 +745,57 @@ class MatrixCalculatorWindow(QMainWindow):
             b_item = QTableWidgetItem(f"{b_value}")
             b_item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(i, n, b_item)
+    
+    def _format_vector(self, v: List[float]) -> str:
+        # formatea bonito: (1, 2, 3)
+        return "(" + ", ".join([f"{x:.6g}" for x in v]) + ")"
+    
+    def _on_sum_vectors(self) -> None:
+        try:
+            u = self.vector_vm.parse_vector(self.vector_u_input.text())
+            v = self.vector_vm.parse_vector(self.vector_v_input.text())
+            res_vm = self.vector_vm.sum_vectors(u, v)
+            out = []
+            out.append(f"Resultado: u + v = {self._format_vector(res_vm.result)}")
+            out.append("")
+            out.append("Pasos:")
+            out.extend(res_vm.steps)
+            self.vector_result_output.setPlainText("\n".join(out))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+    
+    def _on_scalar_mult(self) -> None:
+        try:
+            u = self.vector_vm.parse_vector(self.vector_u_input.text())
+            alpha_str = self.scalar_input.text().strip()
+            if alpha_str == "":
+                raise ValueError("Introduce un valor para el escalar α.")
+            alpha = float(alpha_str)
+            res_vm = self.vector_vm.scalar_mult(alpha, u)
+            out = [f"Resultado: {alpha} · u = {self._format_vector(res_vm.result)}", "", "Pasos:"]
+            out.extend(res_vm.steps)
+            self.vector_result_output.setPlainText("\n".join(out))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+    
+    def _on_verify_properties(self) -> None:
+        try:
+            u = self.vector_vm.parse_vector(self.vector_u_input.text())
+            v = self.vector_vm.parse_vector(self.vector_v_input.text())
+            w_text = self.vector_w_input.text().strip()
+            w = None
+            if w_text != "":
+                w = self.vector_vm.parse_vector(w_text)
+            results = self.vector_vm.verify_properties(u, v, w)
+            out = []
+            for name, ok, steps in results:
+                out.append(f"{name}: {'Cumple' if ok else 'No cumple'}")
+                for s in steps:
+                    out.append("  " + s)
+                out.append("")  # línea en blanco entre propiedades
+            self.vector_result_output.setPlainText("\n".join(out))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
 
     # ------------------------------------------------------------------
     # Métodos auxiliares para actualizar la interfaz
@@ -779,18 +928,6 @@ class MatrixCalculatorWindow(QMainWindow):
                 var_label = QLabel(f"x{idx} = {value:.6g}")
                 var_label.setStyleSheet("font-size: 11pt; color: #a3c2e3;")
                 self.solution_container.addWidget(var_label)
-            directions_title = QLabel("Direcciones asociadas a cada variable libre:")
-            directions_title.setStyleSheet("font-size: 12pt; font-weight: bold; margin-top: 2px;")
-            self.solution_container.addWidget(directions_title)
-            for k, dir_vec in enumerate(p.directions):
-                items = []
-                for j, coef in enumerate(dir_vec):
-                    if abs(coef) > 1e-12:
-                        items.append(f"{coef:.6g}·x{j+1}")
-                term = " + ".join(items) if items else "0"
-                dir_label = QLabel(f"t{k+1}: {term}")
-                dir_label.setStyleSheet("font-size: 11pt; color: #a3c2e3;")
-                self.solution_container.addWidget(dir_label)
         else:
             # Sistema inconsistente o sin solución particular conocida
             inc_label = QLabel("No existe solución.")
@@ -949,6 +1086,7 @@ class MatrixCalculatorWindow(QMainWindow):
             # Guardar los textos originales por si se necesitan más adelante
             self.btn_calc_page.setText("")
             self.btn_home_page.setText("")
+            self.btn_vector_props.setText("")
             self._nav_expanded = False
         else:
             # Expandir: restaurar anchura y mostrar textos
@@ -956,6 +1094,7 @@ class MatrixCalculatorWindow(QMainWindow):
             self.nav_title_label.setVisible(True)
             self.btn_calc_page.setText("Resolver")
             self.btn_home_page.setText("Hola Mundo")
+            self.btn_vector_props.setText("Propiedades ℝⁿ")
             self._nav_expanded = True
 
 
@@ -963,6 +1102,8 @@ def main() -> None:
     """Punto de entrada para ejecutar la aplicación de resolución de matrices."""
     app = QApplication(sys.argv)
     window = MatrixCalculatorWindow()
+    window.vector_vm = VectorPropiedadesViewModel()
+
     window.show()
     sys.exit(app.exec())
 
