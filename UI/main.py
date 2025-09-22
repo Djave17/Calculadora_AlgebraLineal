@@ -809,7 +809,7 @@ class MatrixCalculatorWindow(QMainWindow):
         layout.addWidget(info)
 
         config_row = QHBoxLayout()
-        config_row.addWidget(QLabel("Filas (m):"))
+        config_row.addWidget(QLabel("Filas de A:"))
         self.matrix_eq_rows_spin = QSpinBox()
         self.matrix_eq_rows_spin.setRange(1, self.MAX_ROWS)
         self.matrix_eq_rows_spin.setValue(3)
@@ -823,6 +823,14 @@ class MatrixCalculatorWindow(QMainWindow):
         self.matrix_eq_cols_spin.setValue(3)
         self.matrix_eq_cols_spin.valueChanged.connect(self._update_matrix_eq_tables)
         config_row.addWidget(self.matrix_eq_cols_spin)
+
+        config_row.addSpacing(10)
+        config_row.addWidget(QLabel("Filas de B:"))
+        self.matrix_eq_b_rows_spin = QSpinBox()
+        self.matrix_eq_b_rows_spin.setRange(1, self.MAX_ROWS)
+        self.matrix_eq_b_rows_spin.setValue(3)
+        self.matrix_eq_b_rows_spin.valueChanged.connect(self._update_matrix_eq_tables)
+        config_row.addWidget(self.matrix_eq_b_rows_spin)
 
         config_row.addSpacing(10)
         config_row.addWidget(QLabel("Columnas de B:"))
@@ -891,19 +899,20 @@ class MatrixCalculatorWindow(QMainWindow):
         return page
 
     def _update_matrix_eq_tables(self) -> None:
-        rows = self.matrix_eq_rows_spin.value()
+        rows_a = self.matrix_eq_rows_spin.value()
+        rows_b = self.matrix_eq_b_rows_spin.value()
         cols = self.matrix_eq_cols_spin.value()
         rhs = self.matrix_eq_rhs_spin.value()
 
         self.matrix_eq_A_table.blockSignals(True)
-        self.matrix_eq_A_table.setRowCount(rows)
+        self.matrix_eq_A_table.setRowCount(rows_a)
         self.matrix_eq_A_table.setColumnCount(cols)
         self.matrix_eq_A_table.setHorizontalHeaderLabels([f"x{j + 1}" for j in range(cols)])
         self.matrix_eq_A_table.blockSignals(False)
         self._ensure_table_defaults(self.matrix_eq_A_table)
 
         self.matrix_eq_B_table.blockSignals(True)
-        self.matrix_eq_B_table.setRowCount(rows)
+        self.matrix_eq_B_table.setRowCount(rows_b)
         self.matrix_eq_B_table.setColumnCount(rhs)
         self.matrix_eq_B_table.setHorizontalHeaderLabels([f"b{j + 1}" for j in range(rhs)])
         self.matrix_eq_B_table.blockSignals(False)
@@ -914,6 +923,8 @@ class MatrixCalculatorWindow(QMainWindow):
         try:
             A_rows = self._table_to_matrix(self.matrix_eq_A_table)
             B_rows = self._table_to_matrix(self.matrix_eq_B_table)
+            if len(A_rows) != len(B_rows):
+                raise ValueError("La matriz B debe tener la misma cantidad de filas que A.")
             resultado = self.matrix_eq_vm.resolver(A_rows, B_rows)
             self._matrix_eq_last_result = resultado
 
