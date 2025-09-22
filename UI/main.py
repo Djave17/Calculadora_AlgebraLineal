@@ -923,8 +923,19 @@ class MatrixCalculatorWindow(QMainWindow):
         try:
             A_rows = self._table_to_matrix(self.matrix_eq_A_table)
             B_rows = self._table_to_matrix(self.matrix_eq_B_table)
-            if len(A_rows) != len(B_rows):
-                raise ValueError("La matriz B debe tener la misma cantidad de filas que A.")
+        except ValueError as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+            return
+
+        if len(A_rows) != len(B_rows):
+            QMessageBox.critical(
+                self,
+                "Dimensión incompatible",
+                "La matriz B debe tener la misma cantidad de filas que A.",
+            )
+            return
+
+        try:
             resultado = self.matrix_eq_vm.resolver(A_rows, B_rows)
             self._matrix_eq_last_result = resultado
 

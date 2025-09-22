@@ -115,13 +115,18 @@ def opcion_matricial(vm: LinearAlgebraViewModel) -> None:
     try:
         filas = pedir_entero("Número de filas de A: ", minimo=1)
         columnas = pedir_entero("Número de columnas de A: ", minimo=1)
+        filas_b = pedir_entero("Número de filas de B: ", minimo=1)
         columnas_b = pedir_entero("Número de columnas de B: ", minimo=1)
 
         print("Ingresa la matriz A (componentes separados por espacio o coma):")
         A_rows = [pedir_fila(columnas, f"Fila {i+1}") for i in range(filas)]
 
         print("Ingresa la matriz B:")
-        B_rows = [pedir_fila(columnas_b, f"Fila {i+1}") for i in range(filas)]
+        B_rows = [pedir_fila(columnas_b, f"Fila {i+1}") for i in range(filas_b)]
+
+        if len(A_rows) != len(B_rows):
+            print("  [Error] La matriz B debe tener la misma cantidad de filas que A.")
+            return
 
         resultado = vm.ecuacion_matricial({"A": A_rows, "B": B_rows})
         print(f"\nEstado global: {resultado['estado']}")
