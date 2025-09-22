@@ -66,7 +66,7 @@ class SolucionadorGaussJordan(Solucionador):
 
         # Única solución si rank == n_vars
         if rank == n_vars:
-            x = [0.0] * n_vars
+            x = [Fraction(0)] * n_vars
             # En RREF cada pivote está en una fila única; leer b
             for i, pcol in enumerate(pivots):
                 # Ojo: no garantizamos que pivots estén ordenados por fila; reconstruimos por filas
@@ -83,16 +83,16 @@ class SolucionadorGaussJordan(Solucionador):
             )
 
         # Infinitas soluciones: construir forma paramétrica
-        particular = [0.0] * n_vars
+        particular = [Fraction(0)] * n_vars
         # Fijamos todas libres = 0 para la particular
         for pcol in pivots:
             fila = self._fila_pivote(R, pcol)
             particular[pcol] = R.obtener(fila, col_last)
 
-        direcciones: List[List[float]] = []
+        direcciones: List[List[Fraction]] = []
         for f in free_vars:
-            v = [0.0] * n_vars
-            v[f] = 1.0  # parámetro tf
+            v = [Fraction(0)] * n_vars
+            v[f] = Fraction(1)  # parámetro tf
             # Para cada pivote p: x_p = b - sum a_pf * x_f => contribución en dirección = -a_pf
             for pcol in pivots:
                 fila = self._fila_pivote(R, pcol)

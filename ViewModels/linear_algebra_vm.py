@@ -18,7 +18,15 @@ class StepText:
 
 
 class LinearAlgebraViewModel:
-    """Coordina las operaciones de álgebra lineal solicitadas desde la capa de IU."""
+    """Coordina operaciones siguiendo la teoría de Grossman (2019) y Lay (2012).
+
+    - Combinación lineal: definición A·c = b con columnas de A iguales a los
+      vectores generadores (Grossman §2.1, Lay §1.4).
+    - Clasificación de soluciones de sistemas lineales acorde a rangos y RREF
+      (Lay §2.3, Poole §1.5).
+    - Uso de `Fraction` para aritmética exacta, recomendado por Chapra & Canale
+      (2015) para evitar errores de redondeo.
+    """
 
     # ---------------- Propiedades en R^n ----------------
     def propiedades_Rn(self, entrada: Dict[str, str]) -> Dict[str, object]:
@@ -81,7 +89,12 @@ class LinearAlgebraViewModel:
         matriz_aug = construir_matriz_aumentada(matriz_A, [[c] for c in objetivo.componentes])
 
         solucion = solve_Ax_b(matriz_A, objetivo.componentes)
-        return self._formatear_respuesta_lineal(solucion, matriz_aug)
+        return self._formatear_respuesta_lineal(
+            solucion,
+            matriz_aug,
+            matriz_A,
+            list(objetivo.componentes),
+        )
 
     # ---------------- Ecuación vectorial ----------------
     def ecuacion_vectorial(self, entrada: Dict[str, str]) -> Dict[str, object]:
@@ -100,7 +113,12 @@ class LinearAlgebraViewModel:
             # reconstruir matriz aumentada para la columna correspondiente
             columna = [[fila[idx]] for fila in B_rows]
             matriz_aug = construir_matriz_aumentada(A_rows, columna)
-            data = self._formatear_respuesta_lineal(solucion, matriz_aug)
+            data = self._formatear_respuesta_lineal(
+                solucion,
+                matriz_aug,
+                A_rows,
+                [fila[idx] for fila in B_rows],
+            )
             data["columna"] = idx
             detalles.append(data)
 
@@ -125,7 +143,13 @@ class LinearAlgebraViewModel:
             filas.append([vectores_generadores[j].componentes[i] for j in range(columnas)])
         return filas
 
-    def _formatear_respuesta_lineal(self, solucion: Solucion, matriz_aug: Matriz) -> Dict[str, object]:
+    def _formatear_respuesta_lineal(
+        self,
+        solucion: Solucion,
+        matriz_aug: Matriz,
+        A_rows: Sequence[Sequence[Fraction]] | None = None,
+        b_vector: Sequence[Fraction] | None = None,
+    ) -> Dict[str, object]:
         estado = classify_solution(solucion)
         pasos_historial = solucion.historial.pasos if solucion.historial else []
         respuesta: Dict[str, object] = {
@@ -145,6 +169,10 @@ class LinearAlgebraViewModel:
             respuesta["variables_libres"] = solucion.parametrica.libres
         else:
             respuesta["mensaje"] = "El sistema es inconsistente."
+
+        if estado in {"UNICA", "INFINITAS"} and A_rows is not None and b_vector is not None:
+            verificacion = self._verificar_producto(A_rows, solucion, b_vector)
+            respuesta["verificacion"] = verificacion
 
         if pasos_historial:
             ultima = pasos_historial[-1].despues
@@ -174,3 +202,33 @@ class LinearAlgebraViewModel:
             if paso.despues:
                 lineas.extend("    " + fila for fila in self._formatear_matriz(paso.despues))
         return lineas
+
+    def _verificar_producto(
+        self,
+        A_rows: Sequence[Sequence[Fraction]],
+        solucion: Solucion,
+        b_vector: Sequence[Fraction],
+    ) -> Dict[str, object]:
+        resultado: Dict[str, object] = {}
+        if solucion.estado == "UNICA" and solucion.x is not None:
+            calculado = self._multiplicar(A_rows, solucion.x)
+            resultado["b_calculado"] = [str(Fraction(x)) for x in calculado]
+            resultado["b_objetivo"] = [str(Fraction(x)) for x in b_vector]
+            resultado["coincide"] = calculado == list(b_vector)
+        elif solucion.estado == "INFINITAS" and solucion.parametrica is not None:
+            particular = solucion.parametrica.particular
+            calculado = self._multiplicar(A_rows, particular)
+            resultado["b_calculado"] = [str(Fraction(x)) for x in calculado]
+            resultado["b_objetivo"] = [str(Fraction(x)) for x in b_vector]
+            resultado["coincide"] = calculado == list(b_vector)
+        return resultado
+
+    def _multiplicar(
+        self,
+        A_rows: Sequence[Sequence[Fraction]],
+        coeficientes: Sequence[Fraction],
+    ) -> List[Fraction]:
+        return [
+            sum(Fraction(fila[j]) * Fraction(coeficientes[j]) for j in range(len(coeficientes)))
+            for fila in A_rows
+        ]
