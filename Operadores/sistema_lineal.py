@@ -1,6 +1,16 @@
 from __future__ import annotations
 from typing import List, Sequence, Optional
-from Models.matriz import Matriz
+
+try:
+    from Models.matriz import Matriz
+except ModuleNotFoundError:  # Permite ejecutar el módulo directamente
+    import os
+    import sys
+
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+    if PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, PROJECT_ROOT)
+    from Models.matriz import Matriz
 
 
 class SistemaLineal:
@@ -46,3 +56,47 @@ class SistemaLineal:
             fila.append(self._b[i])
             datos.append(fila)
         return Matriz(datos)
+
+
+class SistemaMatricial:
+    """Representa una ecuación matricial A X = B con B de una o más columnas."""
+
+    def __init__(
+        self,
+        A: Matriz,
+        B: Sequence[Sequence[float]],
+        nombres_variables: Optional[Sequence[str]] = None,
+    ) -> None:
+        if not B:
+            raise ValueError("La matriz B no puede ser vacía.")
+        if len(B) != A.filas:
+            raise ValueError("Dimensión inconsistente entre A y B.")
+        num_cols = len(B[0])
+        for fila in B:
+            if len(fila) != num_cols:
+                raise ValueError("Todas las filas de B deben tener la misma longitud.")
+        self._A = A
+        self._B = [list(float(x) for x in fila) for fila in B]
+        self._nombres = list(nombres_variables) if nombres_variables is not None else None
+
+    @property
+    def A(self) -> Matriz:
+        return self._A
+
+    @property
+    def B(self) -> List[List[float]]:
+        return [fila[:] for fila in self._B]
+
+    def num_rhs(self) -> int:
+        return len(self._B[0]) if self._B else 0
+
+    def columna_b(self, indice: int) -> List[float]:
+        if not (0 <= indice < self.num_rhs()):
+            raise IndexError("Índice de columna de B fuera de rango.")
+        return [fila[indice] for fila in self._B]
+
+    def sistemas_individuales(self) -> List[SistemaLineal]:
+        return [
+            SistemaLineal(self._A, self.columna_b(i), nombres_variables=self._nombres)
+            for i in range(self.num_rhs())
+        ]

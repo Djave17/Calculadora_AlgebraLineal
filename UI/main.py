@@ -49,12 +49,19 @@ from PySide6.QtWidgets import (
     QTextEdit,
 )
 
-# Importa el ViewModel desde el nuevo módulo "resolucion_matriz_vm".
-from UI.ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
-
-# Importa el ViewModel encargado de manejar las operaciones y verificaciones
-# relacionadas con las propiedades algebraicas de vectores en ℝⁿ
+# Importa los view models utilizados en las distintas páginas.
+from UI.ViewModels.resolucion_matriz_vm import (
+    MatrixCalculatorViewModel,
+    ResultVM,
+    StepVM,
+    MatrixEquationResultVM,
+)
 from UI.ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+from UI.ViewModels.combinacion_lineal_vm import (
+    CombinacionLinealViewModel,
+    CombinationResultVM,
+)
+from UI.ViewModels.matrix_equation_vm import MatrixEquationViewModel
 
 
 class MatrixCalculatorWindow(QMainWindow):
@@ -82,11 +89,16 @@ class MatrixCalculatorWindow(QMainWindow):
         self.setWindowTitle("Calculadora de Matrices")
         self.resize(1100, 700)
 
-        # Instanciar el view model
+        # Instanciar los view models principales por página
         self.view_model = MatrixCalculatorViewModel()
 
-        # ViewModel para la nueva página de propiedades de R^n
         self.vector_vm = VectorPropiedadesViewModel()
+        self.combination_vm = CombinacionLinealViewModel()
+        self.matrix_eq_vm = MatrixEquationViewModel()
+
+        # Almacenes para reutilizar resultados en diálogos
+        self._combo_last_result: CombinationResultVM | None = None
+        self._matrix_eq_last_result: MatrixEquationResultVM | None = None
 
 
         # ------------------------------------------------------------------
@@ -117,6 +129,14 @@ class MatrixCalculatorWindow(QMainWindow):
         # Crear la nueva página (vectores) 
         self.vector_props_page = self._create_vector_prop_page()
         self.stack.addWidget(self.vector_props_page)
+
+        # Página para combinación lineal de vectores
+        self.combination_page = self._create_combination_page()
+        self.stack.addWidget(self.combination_page)
+
+        # Página para resolver ecuaciones matriciales AX = B
+        self.matrix_eq_page = self._create_matrix_equation_page()
+        self.stack.addWidget(self.matrix_eq_page)
 
         # Seleccionar la página del cálculo por defecto
         self.btn_calc_page.setChecked(True)
@@ -431,6 +451,22 @@ class MatrixCalculatorWindow(QMainWindow):
         self.btn_vector_props.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         nav_layout.addWidget(self.btn_vector_props)
 
+        self.btn_combination = QPushButton("Combinación")
+        self.btn_combination.setObjectName("navButton")
+        self.btn_combination.setCursor(Qt.PointingHandCursor)
+        self.btn_combination.setCheckable(True)
+        self.btn_combination.setAutoExclusive(True)
+        self.btn_combination.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        nav_layout.addWidget(self.btn_combination)
+
+        self.btn_matrix_eq = QPushButton("AX = B")
+        self.btn_matrix_eq.setObjectName("navButton")
+        self.btn_matrix_eq.setCursor(Qt.PointingHandCursor)
+        self.btn_matrix_eq.setCheckable(True)
+        self.btn_matrix_eq.setAutoExclusive(True)
+        self.btn_matrix_eq.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        nav_layout.addWidget(self.btn_matrix_eq)
+
 
         # Espaciador final para empujar los botones hacia arriba
         nav_layout.addStretch()
@@ -590,6 +626,361 @@ class MatrixCalculatorWindow(QMainWindow):
 
 
     # ------------------------------------------------------------------
+    # Página: Combinación lineal de vectores
+    # ------------------------------------------------------------------
+    def _create_combination_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        page.setLayout(layout)
+
+        title = QLabel("Combinación lineal de vectores")
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        title.setFont(font)
+        layout.addWidget(title)
+
+        info = QLabel(
+            "Determina si el vector objetivo puede escribirse como una combinación "
+            "lineal de los vectores generadores. Se muestra el planteamiento del "
+            "sistema y los pasos de Gauss–Jordan utilizados."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        config_row = QHBoxLayout()
+        config_row.addWidget(QLabel("Dimensión:"))
+        self.combo_dim_spin = QSpinBox()
+        self.combo_dim_spin.setRange(1, self.MAX_ROWS)
+        self.combo_dim_spin.setValue(3)
+        self.combo_dim_spin.valueChanged.connect(self._update_combination_tables)
+        config_row.addWidget(self.combo_dim_spin)
+
+        config_row.addSpacing(12)
+        config_row.addWidget(QLabel("Número de vectores:"))
+        self.combo_vectors_spin = QSpinBox()
+        self.combo_vectors_spin.setRange(1, self.MAX_COLS)
+        self.combo_vectors_spin.setValue(2)
+        self.combo_vectors_spin.valueChanged.connect(self._update_combination_tables)
+        config_row.addWidget(self.combo_vectors_spin)
+
+        config_row.addStretch()
+        layout.addLayout(config_row)
+
+        tables_row = QHBoxLayout()
+
+        basis_group = QGroupBox("Vectores generadores (columnas)")
+        basis_layout = QVBoxLayout()
+        self.combo_basis_table = QTableWidget()
+        self.combo_basis_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.combo_basis_table.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.combo_basis_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.combo_basis_table.verticalHeader().setVisible(False)
+        basis_layout.addWidget(self.combo_basis_table)
+        basis_group.setLayout(basis_layout)
+        tables_row.addWidget(basis_group, stretch=2)
+
+        target_group = QGroupBox("Vector objetivo b")
+        target_layout = QVBoxLayout()
+        self.combo_target_table = QTableWidget()
+        self.combo_target_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.combo_target_table.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.combo_target_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.combo_target_table.verticalHeader().setVisible(False)
+        target_layout.addWidget(self.combo_target_table)
+        target_group.setLayout(target_layout)
+        tables_row.addWidget(target_group, stretch=1)
+
+        layout.addLayout(tables_row)
+
+        button_row = QHBoxLayout()
+        self.combo_resolve_button = QPushButton("Analizar combinación")
+        self.combo_resolve_button.clicked.connect(self._on_combo_resolve)
+        button_row.addWidget(self.combo_resolve_button)
+
+        self.combo_steps_button = QPushButton("Ver pasos detallados")
+        self.combo_steps_button.setEnabled(False)
+        self.combo_steps_button.clicked.connect(self._on_combo_show_steps)
+        button_row.addWidget(self.combo_steps_button)
+
+        self.combo_clear_button = QPushButton("Limpiar")
+        self.combo_clear_button.clicked.connect(self._on_combo_clear)
+        button_row.addWidget(self.combo_clear_button)
+
+        button_row.addStretch()
+        layout.addLayout(button_row)
+
+        self.combo_result_output = QTextEdit()
+        self.combo_result_output.setReadOnly(True)
+        self.combo_result_output.setMinimumHeight(260)
+        layout.addWidget(self.combo_result_output)
+
+        self._update_combination_tables()
+        return page
+
+    def _update_combination_tables(self) -> None:
+        rows = self.combo_dim_spin.value()
+        cols = self.combo_vectors_spin.value()
+
+        self.combo_basis_table.blockSignals(True)
+        self.combo_basis_table.setRowCount(rows)
+        self.combo_basis_table.setColumnCount(cols)
+        self.combo_basis_table.setHorizontalHeaderLabels([f"v{j + 1}" for j in range(cols)])
+        self.combo_basis_table.blockSignals(False)
+        self._ensure_table_defaults(self.combo_basis_table)
+
+        self.combo_target_table.blockSignals(True)
+        self.combo_target_table.setRowCount(rows)
+        self.combo_target_table.setColumnCount(1)
+        self.combo_target_table.setHorizontalHeaderLabels(["b"])
+        self.combo_target_table.blockSignals(False)
+        self._ensure_table_defaults(self.combo_target_table)
+
+    def _on_combo_resolve(self) -> None:
+        self._combo_last_result = None
+        try:
+            basis_rows = self._table_to_matrix(self.combo_basis_table)
+            generadores = self._columns_from_rows(basis_rows)
+            target_rows = self._table_to_matrix(self.combo_target_table)
+            objetivo = [row[0] for row in target_rows]
+
+            resultado = self.combination_vm.analizar(generadores, objetivo)
+            self._combo_last_result = resultado
+
+            lines: List[str] = []
+            lines.append("Matriz aumentada [A|b]:")
+            lines.extend(self._matrix_lines(resultado.augmented_matrix, indent="  "))
+            lines.append("")
+
+            lines.extend(self._format_result_lines(resultado.solver_result, resultado.coefficient_labels))
+            lines.append("")
+            lines.extend(self._format_steps_lines(resultado.solver_result))
+
+            self.combo_result_output.setPlainText("\n".join(lines))
+            self.combo_steps_button.setEnabled(bool(resultado.solver_result.steps))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+
+    def _on_combo_clear(self) -> None:
+        self._fill_table_with_zero(self.combo_basis_table)
+        self._fill_table_with_zero(self.combo_target_table)
+        self.combo_result_output.clear()
+        self.combo_steps_button.setEnabled(False)
+        self._combo_last_result = None
+
+    def _on_combo_show_steps(self) -> None:
+        if not self._combo_last_result:
+            return
+        resultado = self._combo_last_result.solver_result
+        if not resultado.steps:
+            return
+        self._show_steps_dialog(
+            steps=resultado.steps,
+            pivot_cols=resultado.pivot_cols or [],
+            title="Pasos Gauss–Jordan (combinación lineal)",
+        )
+
+
+    # ------------------------------------------------------------------
+    # Página: Resolución de AX = B con múltiples columnas
+    # ------------------------------------------------------------------
+    def _create_matrix_equation_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        page.setLayout(layout)
+
+        title = QLabel("Ecuación matricial AX = B")
+        font = QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        title.setFont(font)
+        layout.addWidget(title)
+
+        info = QLabel(
+            "Introduce la matriz de coeficientes A y la matriz B. El programa "
+            "resuelve AX = B columna a columna, indicando si existe solución "
+            "única, infinitas o si el sistema es inconsistente."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        config_row = QHBoxLayout()
+        config_row.addWidget(QLabel("Filas (m):"))
+        self.matrix_eq_rows_spin = QSpinBox()
+        self.matrix_eq_rows_spin.setRange(1, self.MAX_ROWS)
+        self.matrix_eq_rows_spin.setValue(3)
+        self.matrix_eq_rows_spin.valueChanged.connect(self._update_matrix_eq_tables)
+        config_row.addWidget(self.matrix_eq_rows_spin)
+
+        config_row.addSpacing(10)
+        config_row.addWidget(QLabel("Columnas (n):"))
+        self.matrix_eq_cols_spin = QSpinBox()
+        self.matrix_eq_cols_spin.setRange(1, self.MAX_COLS)
+        self.matrix_eq_cols_spin.setValue(3)
+        self.matrix_eq_cols_spin.valueChanged.connect(self._update_matrix_eq_tables)
+        config_row.addWidget(self.matrix_eq_cols_spin)
+
+        config_row.addSpacing(10)
+        config_row.addWidget(QLabel("Columnas de B:"))
+        self.matrix_eq_rhs_spin = QSpinBox()
+        self.matrix_eq_rhs_spin.setRange(1, self.MAX_COLS)
+        self.matrix_eq_rhs_spin.setValue(1)
+        self.matrix_eq_rhs_spin.valueChanged.connect(self._update_matrix_eq_tables)
+        config_row.addWidget(self.matrix_eq_rhs_spin)
+
+        config_row.addStretch()
+        layout.addLayout(config_row)
+
+        matrices_row = QHBoxLayout()
+
+        A_group = QGroupBox("Matriz A")
+        A_layout = QVBoxLayout()
+        self.matrix_eq_A_table = QTableWidget()
+        self.matrix_eq_A_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.matrix_eq_A_table.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.matrix_eq_A_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.matrix_eq_A_table.verticalHeader().setVisible(False)
+        A_layout.addWidget(self.matrix_eq_A_table)
+        A_group.setLayout(A_layout)
+        matrices_row.addWidget(A_group, stretch=3)
+
+        B_group = QGroupBox("Matriz B")
+        B_layout = QVBoxLayout()
+        self.matrix_eq_B_table = QTableWidget()
+        self.matrix_eq_B_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.matrix_eq_B_table.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.matrix_eq_B_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.matrix_eq_B_table.verticalHeader().setVisible(False)
+        B_layout.addWidget(self.matrix_eq_B_table)
+        B_group.setLayout(B_layout)
+        matrices_row.addWidget(B_group, stretch=2)
+
+        layout.addLayout(matrices_row)
+
+        button_row = QHBoxLayout()
+        self.matrix_eq_resolve_button = QPushButton("Resolver AX = B")
+        self.matrix_eq_resolve_button.clicked.connect(self._on_matrix_eq_solve)
+        button_row.addWidget(self.matrix_eq_resolve_button)
+
+        self.matrix_eq_steps_selector = QComboBox()
+        self.matrix_eq_steps_selector.setEnabled(False)
+        button_row.addWidget(self.matrix_eq_steps_selector)
+
+        self.matrix_eq_steps_button = QPushButton("Ver pasos columna")
+        self.matrix_eq_steps_button.setEnabled(False)
+        self.matrix_eq_steps_button.clicked.connect(self._on_matrix_eq_show_steps)
+        button_row.addWidget(self.matrix_eq_steps_button)
+
+        self.matrix_eq_clear_button = QPushButton("Limpiar")
+        self.matrix_eq_clear_button.clicked.connect(self._on_matrix_eq_clear)
+        button_row.addWidget(self.matrix_eq_clear_button)
+
+        button_row.addStretch()
+        layout.addLayout(button_row)
+
+        self.matrix_eq_result_output = QTextEdit()
+        self.matrix_eq_result_output.setReadOnly(True)
+        self.matrix_eq_result_output.setMinimumHeight(260)
+        layout.addWidget(self.matrix_eq_result_output)
+
+        self._update_matrix_eq_tables()
+        return page
+
+    def _update_matrix_eq_tables(self) -> None:
+        rows = self.matrix_eq_rows_spin.value()
+        cols = self.matrix_eq_cols_spin.value()
+        rhs = self.matrix_eq_rhs_spin.value()
+
+        self.matrix_eq_A_table.blockSignals(True)
+        self.matrix_eq_A_table.setRowCount(rows)
+        self.matrix_eq_A_table.setColumnCount(cols)
+        self.matrix_eq_A_table.setHorizontalHeaderLabels([f"x{j + 1}" for j in range(cols)])
+        self.matrix_eq_A_table.blockSignals(False)
+        self._ensure_table_defaults(self.matrix_eq_A_table)
+
+        self.matrix_eq_B_table.blockSignals(True)
+        self.matrix_eq_B_table.setRowCount(rows)
+        self.matrix_eq_B_table.setColumnCount(rhs)
+        self.matrix_eq_B_table.setHorizontalHeaderLabels([f"b{j + 1}" for j in range(rhs)])
+        self.matrix_eq_B_table.blockSignals(False)
+        self._ensure_table_defaults(self.matrix_eq_B_table)
+
+    def _on_matrix_eq_solve(self) -> None:
+        self._matrix_eq_last_result = None
+        try:
+            A_rows = self._table_to_matrix(self.matrix_eq_A_table)
+            B_rows = self._table_to_matrix(self.matrix_eq_B_table)
+            resultado = self.matrix_eq_vm.resolver(A_rows, B_rows)
+            self._matrix_eq_last_result = resultado
+
+            var_labels = [f"x{j + 1}" for j in range(self.matrix_eq_cols_spin.value())]
+            lines: List[str] = []
+            lines.append("Matriz A ingresada:")
+            lines.extend(self._matrix_lines(A_rows, indent="  "))
+            lines.append("")
+            lines.append("Matriz B ingresada:")
+            lines.extend(self._matrix_lines(B_rows, indent="  "))
+            lines.append("")
+            lines.append(f"Estado global: {self._status_to_text(resultado.status)}")
+            lines.append("")
+
+            for column in resultado.columns:
+                lines.append(f"Columna {column.label}: {self._status_to_text(column.result.status)}")
+                lines.extend(self._format_result_lines(column.result, var_labels, indent="  "))
+                lines.extend(self._format_steps_lines(column.result, indent="  "))
+                lines.append("")
+
+            self.matrix_eq_result_output.setPlainText("\n".join(lines).strip())
+            self._populate_matrix_eq_steps_selector(resultado)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+
+    def _on_matrix_eq_clear(self) -> None:
+        self._fill_table_with_zero(self.matrix_eq_A_table)
+        self._fill_table_with_zero(self.matrix_eq_B_table)
+        self.matrix_eq_result_output.clear()
+        self.matrix_eq_steps_selector.clear()
+        self.matrix_eq_steps_selector.setEnabled(False)
+        self.matrix_eq_steps_button.setEnabled(False)
+        self._matrix_eq_last_result = None
+
+    def _populate_matrix_eq_steps_selector(self, result: MatrixEquationResultVM) -> None:
+        self.matrix_eq_steps_selector.blockSignals(True)
+        self.matrix_eq_steps_selector.clear()
+        for column in result.columns:
+            if column.result.steps:
+                self.matrix_eq_steps_selector.addItem(column.label, column.index)
+        self.matrix_eq_steps_selector.blockSignals(False)
+
+        has_steps = self.matrix_eq_steps_selector.count() > 0
+        self.matrix_eq_steps_selector.setEnabled(has_steps)
+        self.matrix_eq_steps_button.setEnabled(has_steps)
+        if has_steps:
+            self.matrix_eq_steps_selector.setCurrentIndex(0)
+
+    def _on_matrix_eq_show_steps(self) -> None:
+        if not self._matrix_eq_last_result:
+            return
+        current_index = self.matrix_eq_steps_selector.currentIndex()
+        if current_index < 0:
+            return
+        column_index = self.matrix_eq_steps_selector.currentData()
+        column = next(
+            (col for col in self._matrix_eq_last_result.columns if col.index == column_index),
+            None,
+        )
+        if not column or not column.result.steps:
+            return
+        title = f"Pasos Gauss–Jordan ({column.label})"
+        self._show_steps_dialog(
+            steps=column.result.steps,
+            pivot_cols=column.result.pivot_cols or [],
+            title=title,
+        )
     # Aplicación de tema oscuro y estilo
     # ------------------------------------------------------------------
     def _apply_dark_theme(self) -> None:
@@ -774,6 +1165,113 @@ class MatrixCalculatorWindow(QMainWindow):
     def _format_vector(self, v: List[float]) -> str:
         # formatea bonito: (1, 2, 3)
         return "(" + ", ".join([f"{x:.6g}" for x in v]) + ")"
+
+    def _status_to_text(self, status: str) -> str:
+        mapping = {
+            "UNICA": "Solución única",
+            "INFINITAS": "Infinitas soluciones",
+            "INCONSISTENTE": "Sistema inconsistente",
+        }
+        return mapping.get(status, status)
+
+    def _matrix_lines(self, matrix: List[List[float]], indent: str = "") -> List[str]:
+        if not matrix:
+            return [f"{indent}—"]
+        return [
+            f"{indent}[{', '.join(f'{value:.6g}' for value in row)}]"
+            for row in matrix
+        ]
+
+    def _table_to_matrix(self, table: QTableWidget) -> List[List[float]]:
+        data: List[List[float]] = []
+        for i in range(table.rowCount()):
+            row_vals: List[float] = []
+            for j in range(table.columnCount()):
+                item = table.item(i, j)
+                text = item.text().strip() if item and item.text() else "0"
+                try:
+                    row_vals.append(float(text))
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Valor no numérico en fila {i + 1}, columna {j + 1}: '{text}'"
+                    ) from exc
+            data.append(row_vals)
+        return data
+
+    def _columns_from_rows(self, rows: List[List[float]]) -> List[List[float]]:
+        if not rows:
+            return []
+        num_cols = len(rows[0])
+        for fila in rows:
+            if len(fila) != num_cols:
+                raise ValueError("Todas las filas deben tener la misma longitud.")
+        return [[rows[i][j] for i in range(len(rows))] for j in range(num_cols)]
+
+    def _format_result_lines(
+        self,
+        result: ResultVM,
+        variable_labels: List[str],
+        indent: str = "",
+    ) -> List[str]:
+        lines = [f"{indent}Estado: {self._status_to_text(result.status)}"]
+
+        if result.status == "UNICA" and result.solution is not None:
+            lines.append(f"{indent}Solución:")
+            for label, value in zip(variable_labels, result.solution):
+                lines.append(f"{indent}  {label} = {value:.6g}")
+        elif result.status == "INFINITAS" and result.parametric is not None:
+            lines.append(f"{indent}Solución particular:")
+            for label, value in zip(variable_labels, result.parametric.particular):
+                lines.append(f"{indent}  {label} = {value:.6g}")
+            if result.parametric.direcciones:
+                lines.append(f"{indent}Direcciones asociadas:")
+                for idx, direction in enumerate(result.parametric.direcciones, start=1):
+                    direction_str = ", ".join(f"{value:.6g}" for value in direction)
+                    lines.append(f"{indent}  t{idx}: ({direction_str})")
+        elif result.status == "INCONSISTENTE":
+            lines.append(f"{indent}No existe solución compatible con B.")
+
+        pivote_labels = ", ".join(
+            variable_labels[idx] for idx in (result.pivot_cols or [])
+        ) or "—"
+        libre_labels = ", ".join(
+            variable_labels[idx] for idx in (result.free_vars or [])
+        ) or "—"
+        lines.append(f"{indent}Columnas pivote: {pivote_labels}")
+        lines.append(f"{indent}Variables libres: {libre_labels}")
+        return lines
+
+    def _format_steps_lines(self, result: ResultVM, indent: str = "") -> List[str]:
+        if not result.steps:
+            return [f"{indent}No se registraron pasos."]
+        lines = [f"{indent}Pasos Gauss–Jordan:"]
+        for step in result.steps:
+            lines.append(f"{indent}  [{step.number}] {step.description}")
+            if step.after_matrix:
+                lines.extend(self._matrix_lines(step.after_matrix, indent + "    "))
+        return lines
+
+    def _ensure_table_defaults(self, table: QTableWidget) -> None:
+        for i in range(table.rowCount()):
+            for j in range(table.columnCount()):
+                item = table.item(i, j)
+                if item is None:
+                    item = QTableWidgetItem("0")
+                    table.setItem(i, j, item)
+                if item.text().strip() == "":
+                    item.setText("0")
+                item.setTextAlignment(Qt.AlignCenter)
+
+    def _fill_table_with_zero(self, table: QTableWidget) -> None:
+        for i in range(table.rowCount()):
+            for j in range(table.columnCount()):
+                item = table.item(i, j)
+                if item is None:
+                    item = QTableWidgetItem("0")
+                    table.setItem(i, j, item)
+                else:
+                    item.setText("0")
+                item.setTextAlignment(Qt.AlignCenter)
     
     def _on_sum_vectors(self) -> None:
         try:
@@ -873,14 +1371,7 @@ class MatrixCalculatorWindow(QMainWindow):
 
     def _reset_table_to_zero(self) -> None:
         """Establece todas las celdas de la matriz a 0."""
-        for i in range(self.table.rowCount()):
-            for j in range(self.table.columnCount()):
-                item = self.table.item(i, j)
-                if not item:
-                    item = QTableWidgetItem()
-                    self.table.setItem(i, j, item)
-                item.setText("0")
-                item.setTextAlignment(Qt.AlignCenter)
+        self._fill_table_with_zero(self.table)
 
     def _clear_solution_display(self) -> None:
         """Elimina los widgets de la zona de soluciones."""
@@ -1052,7 +1543,12 @@ class MatrixCalculatorWindow(QMainWindow):
     # ------------------------------------------------------------------
     # Visualización de pasos en ventana emergente
     # ------------------------------------------------------------------
-    def _show_steps_dialog(self) -> None:
+    def _show_steps_dialog(
+        self,
+        steps: List[StepVM] | None = None,
+        pivot_cols: List[int] | None = None,
+        title: str = "Pasos Gauss–Jordan",
+    ) -> None:
         """
         Muestra una ventana modal con todos los pasos del algoritmo.
 
@@ -1061,15 +1557,15 @@ class MatrixCalculatorWindow(QMainWindow):
         lista completa de pasos y crea un `QDialog` con su propio
         `QScrollArea` para que el usuario pueda revisar cada paso.
         """
-        # Comprobar que hay pasos almacenados
-        if not self._last_steps:
+        steps_to_show = steps if steps is not None else self._last_steps
+        if not steps_to_show:
             return
         dialog = QDialog(self)
-        dialog.setWindowTitle("Pasos Gauss–Jordan")
+        dialog.setWindowTitle(title)
         dialog.resize(700, 500)
         vbox = QVBoxLayout(dialog)
         # Encabezado mostrando solo las columnas pivote
-        piv = self._last_pivot_cols or []
+        piv = pivot_cols if pivot_cols is not None else (self._last_pivot_cols or [])
         def _fmt_vars(indices: List[int]) -> str:
             return ", ".join([f"x{idx+1}" for idx in indices]) if indices else "—"
         header = QLabel(f"Columnas pivote: {_fmt_vars(piv)}")
@@ -1082,7 +1578,7 @@ class MatrixCalculatorWindow(QMainWindow):
         container_layout = QVBoxLayout()
         container.setLayout(container_layout)
         # Crear widgets de paso
-        for step in self._last_steps:
+        for step in steps_to_show:
             w = self._create_step_widget(step)
             container_layout.addWidget(w)
         container_layout.addStretch()
@@ -1112,14 +1608,18 @@ class MatrixCalculatorWindow(QMainWindow):
             self.btn_calc_page.setText("")
             self.btn_home_page.setText("")
             self.btn_vector_props.setText("")
+            self.btn_combination.setText("")
+            self.btn_matrix_eq.setText("")
             self._nav_expanded = False
         else:
             # Expandir: restaurar anchura y mostrar textos
             self.nav_panel.setFixedWidth(180)
             self.nav_title_label.setVisible(True)
             self.btn_calc_page.setText("Resolver")
-            self.btn_home_page.setText("Hola Mundo")
+            self.btn_home_page.setText("MER")
             self.btn_vector_props.setText("Propiedades ℝⁿ")
+            self.btn_combination.setText("Combinación")
+            self.btn_matrix_eq.setText("AX = B")
             self._nav_expanded = True
 
 

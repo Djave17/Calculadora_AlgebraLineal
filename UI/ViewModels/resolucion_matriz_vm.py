@@ -39,7 +39,7 @@ from typing import List, Optional
 # environments where only the UI is available), an ImportError will be
 # raised when solve() is called.
 from Models.matriz import Matriz
-from Operadores.sistema_lineal import SistemaLineal
+from Operadores.sistema_lineal import SistemaLineal, SistemaMatricial
 from Operadores.SolucionGaussJordan.solucion_gauss_jordan import SolucionadorGaussJordan
 from Operadores.estrategia_pivoteo import PivoteoParcial
 
@@ -146,6 +146,23 @@ class ResultVM:
     steps: Optional[List[StepVM]] = None
 
 
+@dataclass
+class ColumnResultVM:
+    """Resultado asociado a una columna específica de B en AX = B."""
+
+    index: int
+    label: str
+    result: ResultVM
+
+
+@dataclass
+class MatrixEquationResultVM:
+    """Encapsula la solución global de una ecuación matricial AX = B."""
+
+    status: str
+    columns: List[ColumnResultVM]
+
+
 class MatrixCalculatorViewModel:
     """View model orchestrating the process of solving linear systems.
 
@@ -228,20 +245,68 @@ class MatrixCalculatorViewModel:
         A_data = [row[:-1] for row in augmented]
         b_data = [row[-1] for row in augmented]
 
-        # Use the domain model to construct the system
-        A = Matriz(A_data)
-        sistema = SistemaLineal(A, b_data)
+        solver = self._build_solver()
+        return self._solve_with_rows(A_data, b_data, solver)
 
-        # Choose method; for now only Gauss–Jordan is supported
+    def solve_matrix_equation(
+        self,
+        A_rows: List[List[float]],
+        B_rows: List[List[float]],
+    ) -> MatrixEquationResultVM:
+        """Resuelve AX = B tratando cada columna de B como un sistema independiente."""
+        if not A_rows or not A_rows[0]:
+            raise ValueError("La matriz A no puede ser vacía.")
+        if len(A_rows) != len(B_rows):
+            raise ValueError("A y B deben tener el mismo número de filas.")
+        num_vars = len(A_rows[0])
+        for fila in A_rows:
+            if len(fila) != num_vars:
+                raise ValueError("Todas las filas de A deben tener la misma longitud.")
+        if not B_rows or not B_rows[0]:
+            raise ValueError("La matriz B debe tener al menos una columna.")
+
+        self._rows = len(A_rows)
+        self._cols = num_vars
+
+        matriz_A = Matriz(A_rows)
+        sistema_matricial = SistemaMatricial(matriz_A, B_rows)
+        solver = self._build_solver()
+
+        column_results: List[ColumnResultVM] = []
+        for idx, sistema in enumerate(sistema_matricial.sistemas_individuales()):
+            solucion = solver.resolver(sistema, registrar_pasos=True)
+            column_results.append(
+                ColumnResultVM(
+                    index=idx,
+                    label=f"b{idx + 1}",
+                    result=self._build_result_vm(solucion),
+                )
+            )
+
+        status = self._aggregate_status(column_results)
+        return MatrixEquationResultVM(status=status, columns=column_results)
+
+    def _build_solver(self) -> SolucionadorGaussJordan:
         if self._method.lower() in ["gauss-jordan", "gauss_jordan", "gauss jordan"]:
-            solver = SolucionadorGaussJordan(pivoteo=PivoteoParcial())
-        else:
-            # Fallback: Gauss–Jordan
-            solver = SolucionadorGaussJordan(pivoteo=PivoteoParcial())
+            return SolucionadorGaussJordan(pivoteo=PivoteoParcial())
+        return SolucionadorGaussJordan(pivoteo=PivoteoParcial())
 
+    def _solve_with_rows(
+        self,
+        A_rows: List[List[float]],
+        b_data: List[float],
+        solver: Optional[SolucionadorGaussJordan] = None,
+    ) -> ResultVM:
+        if len(A_rows) != len(b_data):
+            raise ValueError("Dimensión inconsistente entre A y b.")
+        if solver is None:
+            solver = self._build_solver()
+        A = Matriz(A_rows)
+        sistema = SistemaLineal(A, b_data)
         solucion = solver.resolver(sistema, registrar_pasos=True)
+        return self._build_result_vm(solucion)
 
-        # Transform the domain result into a view model
+    def _build_result_vm(self, solucion) -> ResultVM:
         status = solucion.estado
         pivot_cols = solucion.columnas_pivote or []
         free_vars = solucion.variables_libres or []
@@ -264,7 +329,7 @@ class MatrixCalculatorViewModel:
 
         if status == "UNICA":
             solution = solucion.x or []
-            result = ResultVM(
+            return ResultVM(
                 status=status,
                 solution=solution,
                 parametric=None,
@@ -272,7 +337,8 @@ class MatrixCalculatorViewModel:
                 free_vars=free_vars,
                 steps=steps_vm,
             )
-        elif status == "INFINITAS":
+
+        if status == "INFINITAS":
             param = solucion.parametrica
             if param is not None:
                 param_vm = ParametricVM(
@@ -282,7 +348,7 @@ class MatrixCalculatorViewModel:
                 )
             else:
                 param_vm = None
-            result = ResultVM(
+            return ResultVM(
                 status=status,
                 solution=None,
                 parametric=param_vm,
@@ -290,14 +356,21 @@ class MatrixCalculatorViewModel:
                 free_vars=free_vars,
                 steps=steps_vm,
             )
-        else:  # INCONSISTENTE
-            result = ResultVM(
-                status=status,
-                solution=None,
-                parametric=None,
-                pivot_cols=pivot_cols,
-                free_vars=free_vars,
-                steps=steps_vm,
-            )
 
-        return result
+        return ResultVM(
+            status=status,
+            solution=None,
+            parametric=None,
+            pivot_cols=pivot_cols,
+            free_vars=free_vars,
+            steps=steps_vm,
+        )
+
+    @staticmethod
+    def _aggregate_status(columns: List[ColumnResultVM]) -> str:
+        statuses = [col.result.status for col in columns]
+        if any(status == "INCONSISTENTE" for status in statuses):
+            return "INCONSISTENTE"
+        if any(status == "INFINITAS" for status in statuses):
+            return "INFINITAS"
+        return "UNICA"
