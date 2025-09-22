@@ -1164,7 +1164,7 @@ class MatrixCalculatorWindow(QMainWindow):
     
     def _format_vector(self, v: List[float]) -> str:
         # formatea bonito: (1, 2, 3)
-        return "(" + ", ".join([f"{x:.6g}" for x in v]) + ")"
+        return "(" + ", ".join([str(x) for x in v]) + ")"
 
     def _status_to_text(self, status: str) -> str:
         mapping = {
@@ -1178,7 +1178,7 @@ class MatrixCalculatorWindow(QMainWindow):
         if not matrix:
             return [f"{indent}—"]
         return [
-            f"{indent}[{', '.join(f'{value:.6g}' for value in row)}]"
+            f"{indent}[{', '.join(str(value) for value in row)}]"
             for row in matrix
         ]
 
@@ -1218,15 +1218,15 @@ class MatrixCalculatorWindow(QMainWindow):
         if result.status == "UNICA" and result.solution is not None:
             lines.append(f"{indent}Solución:")
             for label, value in zip(variable_labels, result.solution):
-                lines.append(f"{indent}  {label} = {value:.6g}")
+                lines.append(f"{indent}  {label} = {value}")
         elif result.status == "INFINITAS" and result.parametric is not None:
             lines.append(f"{indent}Solución particular:")
             for label, value in zip(variable_labels, result.parametric.particular):
-                lines.append(f"{indent}  {label} = {value:.6g}")
+                lines.append(f"{indent}  {label} = {value}")
             if result.parametric.direcciones:
                 lines.append(f"{indent}Direcciones asociadas:")
                 for idx, direction in enumerate(result.parametric.direcciones, start=1):
-                    direction_str = ", ".join(f"{value:.6g}" for value in direction)
+                    direction_str = ", ".join(str(value) for value in direction)
                     lines.append(f"{indent}  t{idx}: ({direction_str})")
         elif result.status == "INCONSISTENTE":
             lines.append(f"{indent}No existe solución compatible con B.")
@@ -1431,7 +1431,7 @@ class MatrixCalculatorWindow(QMainWindow):
         if result.status == "UNICA" and result.solution is not None:
             # Listar los valores de cada variable
             for idx, value in enumerate(result.solution, start=1):
-                var_label = QLabel(f"x{idx} = {value:.6g}")
+                var_label = QLabel(f"x{idx} = {value}")
                 var_label.setStyleSheet("font-size: 12pt; color: #a3c2e3;")
                 self.solution_container.addWidget(var_label)
         elif result.status == "INFINITAS" and result.parametric is not None:
@@ -1441,7 +1441,7 @@ class MatrixCalculatorWindow(QMainWindow):
             particular_title.setStyleSheet("font-size: 12pt; font-weight: bold;")
             self.solution_container.addWidget(particular_title)
             for idx, value in enumerate(p.particular, start=1):
-                var_label = QLabel(f"x{idx} = {value:.6g}")
+                var_label = QLabel(f"x{idx} = {value}")
                 var_label.setStyleSheet("font-size: 11pt; color: #a3c2e3;")
                 self.solution_container.addWidget(var_label)
         else:
@@ -1528,7 +1528,7 @@ class MatrixCalculatorWindow(QMainWindow):
         free_cols: List[int] = []
         for i in range(rows):
             for j in range(cols):
-                item = QTableWidgetItem(f"{matrix[i][j]:.6g}")
+                item = QTableWidgetItem(str(matrix[i][j]))
                 item.setTextAlignment(Qt.AlignCenter)
                 item.setForeground(white_fg)
                 # Resaltar celda pivote si aplica

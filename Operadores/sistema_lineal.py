@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Sequence, Optional
+from fractions import Fraction
 
 try:
     from Models.matriz import Matriz
@@ -24,7 +25,7 @@ class SistemaLineal:
         if A.filas != len(b):
             raise ValueError("Dimensión inconsistente: filas(A) debe coincidir con len(b).")
         self._A = A
-        self._b = list(float(x) for x in b)
+        self._b = [Fraction(x) for x in b]
         self._nombres = list(nombres_variables) if nombres_variables is not None else None
 
     @property
@@ -76,7 +77,7 @@ class SistemaMatricial:
             if len(fila) != num_cols:
                 raise ValueError("Todas las filas de B deben tener la misma longitud.")
         self._A = A
-        self._B = [list(float(x) for x in fila) for fila in B]
+        self._B = [[Fraction(x) for x in fila] for fila in B]
         self._nombres = list(nombres_variables) if nombres_variables is not None else None
 
     @property

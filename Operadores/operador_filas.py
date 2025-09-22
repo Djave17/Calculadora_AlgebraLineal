@@ -1,6 +1,8 @@
 # algebra_lineal/Operadores/operador_filas.py
 from __future__ import annotations
 from typing import Optional
+from fractions import Fraction
+
 from Models.matriz import Matriz
 
 
@@ -26,23 +28,25 @@ class OperadorFilas:
         self._m.asignar_fila(i, fila_j)
         self._m.asignar_fila(j, fila_i)
 
-    def escalar(self, i: int, factor: float) -> None:
+    def escalar(self, i: int, factor) -> None:
         if not (0 <= i < self._m.filas):
             raise IndexError("Índice de fila fuera de rango.")
-        if factor == 0.0:
+        factor = Fraction(factor)
+        if factor == 0:
             # Permitimos, pero no es útil para normalizar pivote
-            self._m.asignar_fila(i, [0.0] * self._m.columnas)
+            self._m.asignar_fila(i, [Fraction(0)] * self._m.columnas)
             return
         fila = self._m.obtener_fila(i)
         self._m.asignar_fila(i, [factor * x for x in fila])
 
-    def combinar(self, destino: int, fuente: int, factor: float) -> None:
+    def combinar(self, destino: int, fuente: int, factor) -> None:
         """
         destino <- destino + factor * fuente
         """
         if not (0 <= destino < self._m.filas) or not (0 <= fuente < self._m.filas):
             raise IndexError("Índice de fila fuera de rango.")
-        if destino == fuente and factor != 0.0:
+        factor = Fraction(factor)
+        if destino == fuente and factor != 0:
             raise ValueError("No tiene sentido combinar una fila consigo misma con factor != 0.")
         fd = self._m.obtener_fila(destino)
         fs = self._m.obtener_fila(fuente)
@@ -55,6 +59,6 @@ class OperadorFilas:
         Escala la fila para que el elemento en col_pivote sea 1 (si |pivote|>eps).
         """
         pivote = self._m.obtener(fila, col_pivote)
-        if abs(pivote) <= eps:
+        if pivote == 0:
             raise ZeroDivisionError("Pivote numéricamente cero; requiere pivoteo o reordenamiento.")
-        self.escalar(fila, 1.0 / pivote)
+        self.escalar(fila, Fraction(1, 1) / pivote)

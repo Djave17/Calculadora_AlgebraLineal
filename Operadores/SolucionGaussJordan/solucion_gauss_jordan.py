@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
+from fractions import Fraction
+
 from Operadores.sistema_lineal import SistemaLineal
 from .solucion import Solucion, Parametrica
 from .solucionador import Solucionador
@@ -43,10 +45,10 @@ class SolucionadorGaussJordan(Solucionador):
             # chequea si todas las columnas de variables son ~0
             all_zero = True
             for j in range(n_vars):
-                if abs(R.obtener(i, j)) > self._eps:
+                if R.obtener(i, j) != 0:
                     all_zero = False
                     break
-            if all_zero and abs(R.obtener(i, col_last)) > self._eps:
+            if all_zero and R.obtener(i, col_last) != 0:
                 inconsistent = True
                 break
 
@@ -95,7 +97,7 @@ class SolucionadorGaussJordan(Solucionador):
             for pcol in pivots:
                 fila = self._fila_pivote(R, pcol)
                 coef = R.obtener(fila, f)  # a_{p,f} en la ecuación de la fila del pivote p
-                if abs(coef) > self._eps:
+                if coef != 0:
                     v[pcol] = -coef
             direcciones.append(v)
 
@@ -115,11 +117,9 @@ class SolucionadorGaussJordan(Solucionador):
     def _fila_pivote(self, R: 'Matriz', col_pivote: int) -> int:
         for i in range(R.filas):
             val = R.obtener(i, col_pivote)
-            if abs(val - 1.0) <= self._eps:
+            if val == Fraction(1):
                 return i
-        # fallback (no debería ocurrir en RREF)
         for i in range(R.filas):
-            if abs(R.obtener(i, col_pivote)) > self._eps:
+            if R.obtener(i, col_pivote) != 0:
                 return i
         raise RuntimeError("No se encontró fila de pivote para la columna especificada.")
-
