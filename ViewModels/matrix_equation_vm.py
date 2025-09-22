@@ -1,8 +1,10 @@
+"""ViewModel para resolver AX = B con Gauss-Jordan (Strang, 2016)."""
+
 from __future__ import annotations
 
 from typing import List
 
-from UI.ViewModels.resolucion_matriz_vm import (
+from ViewModels.resolucion_matriz_vm import (
     MatrixCalculatorViewModel,
     MatrixEquationResultVM,
 )

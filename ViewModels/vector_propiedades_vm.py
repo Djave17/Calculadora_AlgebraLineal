@@ -1,4 +1,8 @@
-# UI/ViewModels/vector_properties_vm.py
+"""Operaciones para la página de propiedades vectoriales.
+
+Se apoya en la teoría de Grossman (2019, cap. 2) para verificar las
+propiedades básicas de un espacio vectorial.
+"""
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import re

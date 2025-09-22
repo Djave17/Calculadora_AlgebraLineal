@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
 )
 
 # Importa el ViewModel desde el nuevo módulo "resolucion_matriz_vm".
-from UI.ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
+from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
 
 
 class MatrixCalculatorWindow(QMainWindow):

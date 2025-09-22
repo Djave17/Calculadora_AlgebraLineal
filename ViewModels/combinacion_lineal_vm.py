@@ -1,9 +1,11 @@
+"""ViewModel para analizar combinaciones lineales siguiendo Lay (2012)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List
 
-from UI.ViewModels.resolucion_matriz_vm import (
+from ViewModels.resolucion_matriz_vm import (
     MatrixCalculatorViewModel,
     ResultVM,
 )
