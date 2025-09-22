@@ -19,19 +19,37 @@ class HomePage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(32, 32, 32, 32)
         layout.addStretch(1)
 
-        label = QLabel(
-            "¡Bienvenido! Usa la barra lateral para navegar por las "
-            "distintas herramientas de álgebra lineal."
+        titulo = QLabel("Calculadora de Álgebra Lineal")
+        titulo.setAlignment(Qt.AlignCenter)
+        fuente = QFont()
+        fuente.setPointSize(18)
+        fuente.setBold(True)
+        titulo.setFont(fuente)
+        titulo.setWordWrap(True)
+        layout.addWidget(titulo)
+
+        descripcion = QLabel(
+            "Explora métodos fundamentales de álgebra lineal: resolución de sistemas "
+            "con Gauss-Jordan, análisis de combinaciones lineales, verificación de "
+            "propiedades vectoriales y ecuaciones matriciales AX = B. Cada vista "
+            "incluye notas resumidas basadas en Lay (2012) y Grossman (2019) para "
+            "acompañar el estudio."
         )
-        label.setAlignment(Qt.AlignCenter)
-        font = QFont()
-        font.setPointSize(16)
-        font.setBold(True)
-        label.setFont(font)
-        label.setWordWrap(True)
-        layout.addWidget(label)
+        descripcion.setAlignment(Qt.AlignJustify)
+        descripcion.setWordWrap(True)
+        descripcion.setStyleSheet("font-size: 13px; line-height: 1.5;")
+        layout.addWidget(descripcion)
+
+        indicaciones = QLabel(
+            "Usa el menú lateral para elegir un módulo y, si necesitas repasar los pasos "
+            "de Gauss-Jordan, abre el diálogo de detalles que muestra cada operación."
+        )
+        indicaciones.setAlignment(Qt.AlignJustify)
+        indicaciones.setWordWrap(True)
+        indicaciones.setStyleSheet("font-size: 13px; margin-top: 12px; line-height: 1.5;")
+        layout.addWidget(indicaciones)
 
         layout.addStretch(1)

@@ -1,17 +1,16 @@
-"""Utilities that keep PySide views lightweight and testable.
+"""Utilidades para mantener las vistas de PySide ligeras y comprobables.
 
-The helpers from this module encapsulate small building blocks that are
-shared by multiple screens:
+Los helpers de este módulo reúnen piezas pequeñas reutilizadas en varias
+pantallas:
 
-* Matrix pretty-printing follows Lay, *Linear Algebra and its
-  Applications* (5ª ed., 2012, §1.2) where augmented matrices are shown
-  row by row.
-* The textual summary for Gauss–Jordan steps references Poole,
-  *Linear Algebra: A Modern Introduction* (4ª ed., 2015, §1.4), which is
-  the material suggested in class for tracking elimination steps.
+* El formateo de matrices sigue a Lay, *Linear Algebra and its Applications*
+  (5ª ed., 2012, §1.2), donde la matriz aumentada se presenta fila por fila.
+* El resumen textual de los pasos de Gauss-Jordan cita a Poole, *Linear Algebra:
+  A Modern Introduction* (4ª ed., 2015, §1.4), referencia indicada en clase
+  para documentar la eliminación.
 
-Keeping these routines isolated prevents the main window from turning
-into a "God object" and aligns with MVVM recommendations (MSDN, 2009).
+Separar estas rutinas evita que la ventana principal se convierta en un
+"objeto Dios" y respeta la separación propuesta por MVVM (MSDN, 2009).
 """
 
 from __future__ import annotations
@@ -25,10 +24,10 @@ from ViewModels.resolucion_matriz_vm import ResultVM
 
 
 def matrix_lines(matrix: Sequence[Sequence[float]] | None, indent: str = "") -> List[str]:
-    """Render an augmented matrix row by row.
+    """Renderiza una matriz aumentada fila por fila.
 
-    The format mirrors the way we present examples in class: each row is
-    wrapped in brackets and aligned using the optional ``indent``.
+    El formato replica los ejemplos vistos en clase: cada fila se envuelve
+    entre corchetes y se respeta una sangría opcional ``indent``.
     """
 
     if not matrix:
@@ -37,7 +36,7 @@ def matrix_lines(matrix: Sequence[Sequence[float]] | None, indent: str = "") -> 
 
 
 def status_to_text(status: str) -> str:
-    """Map solver status codes to human-readable messages."""
+    """Traduce el estado del solucionador a mensajes legibles."""
 
     mapping = {
         "UNICA": "Solución única",
@@ -52,7 +51,7 @@ def format_result_lines(
     variable_labels: Sequence[str],
     indent: str = "",
 ) -> List[str]:
-    """Create a multi-line textual summary for solver results."""
+    """Genera un resumen textual en varias líneas del resultado obtenido."""
 
     lines = [f"{indent}Estado: {status_to_text(result.status)}"]
 
@@ -80,7 +79,7 @@ def format_result_lines(
 
 
 def format_steps_lines(result: ResultVM, indent: str = "") -> List[str]:
-    """Produce a short, study-friendly preview of Gauss–Jordan steps."""
+    """Devuelve una vista rápida de los pasos de Gauss-Jordan apta para estudio."""
 
     if not result.steps:
         return [f"{indent}No se registraron pasos."]
@@ -93,7 +92,7 @@ def format_steps_lines(result: ResultVM, indent: str = "") -> List[str]:
 
 
 def ensure_table_defaults(table: QTableWidget) -> None:
-    """Guarantee that every cell has a numeric string, defaulting to 0."""
+    """Garantiza que cada celda almacene un número en texto (por defecto 0)."""
 
     for i in range(table.rowCount()):
         for j in range(table.columnCount()):
@@ -107,7 +106,7 @@ def ensure_table_defaults(table: QTableWidget) -> None:
 
 
 def fill_table_with_zero(table: QTableWidget) -> None:
-    """Reset every cell in the table back to zero."""
+    """Reinicia todas las celdas de la tabla al valor cero."""
 
     for i in range(table.rowCount()):
         for j in range(table.columnCount()):
@@ -121,11 +120,11 @@ def fill_table_with_zero(table: QTableWidget) -> None:
 
 
 def table_to_matrix(table: QTableWidget) -> List[List[float]]:
-    """Convert a ``QTableWidget`` into a float matrix.
+    """Convierte un ``QTableWidget`` en una matriz de flotantes.
 
-    This mirrors the data flow explained in Strang, *Linear Algebra and
-    Its Applications* (4ª ed., 2016, §3.2): the UI captures coefficients
-    while the ViewModel works with numeric arrays.
+    La transformación sigue el flujo descrito por Strang, *Linear Algebra and
+    its Applications* (4ª ed., 2016, §3.2): la IU captura coeficientes y el
+    ViewModel opera con arreglos numéricos.
     """
 
     data: List[List[float]] = []
@@ -145,7 +144,7 @@ def table_to_matrix(table: QTableWidget) -> List[List[float]]:
 
 
 def columns_from_rows(rows: Sequence[Sequence[float]]) -> List[List[float]]:
-    """Transpose a matrix expressed as rows into its column vectors."""
+    """Transpone una matriz dada por filas para obtener sus vectores columna."""
 
     if not rows:
         return []
@@ -157,6 +156,6 @@ def columns_from_rows(rows: Sequence[Sequence[float]]) -> List[List[float]]:
 
 
 def format_vector(values: Iterable[float]) -> str:
-    """Return a textbook-style tuple representation ``(v1, v2, …)``."""
+    """Devuelve una representación tipo tupla ``(v1, v2, ...)``."""
 
     return "(" + ", ".join(str(x) for x in values) + ")"

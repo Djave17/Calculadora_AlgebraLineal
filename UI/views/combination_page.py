@@ -132,7 +132,7 @@ class CombinationPage(QWidget):
         self.combo_steps_button.clicked.connect(self._on_show_steps)
         self.combo_clear_button.clicked.connect(self._on_clear)
 
-    # --------------------------- interaction -----------------------------
+    # --------------------------- Interacción -----------------------------
     def _update_tables(self) -> None:
         rows = self.combo_dim_spin.value()
         cols = self.combo_vectors_spin.value()

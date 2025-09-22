@@ -1,4 +1,4 @@
-"""Utilities for UI views with project-root path setup."""
+"""Utilidades para las vistas de la UI con preparación del sys.path."""
 from __future__ import annotations
 
 import os

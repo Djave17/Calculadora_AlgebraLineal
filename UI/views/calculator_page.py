@@ -60,7 +60,7 @@ class CalculatorPage(QWidget):
         self._update_table_dimensions()
         self.dimension_label.setText(f"Matriz {self.view_model.rows}×{self.view_model.cols} (A|b)")
 
-    # ------------------------------ UI setup ------------------------------
+    # ------------------------------ Construcción de UI ------------------------------
     def _build_ui(self) -> None:
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -213,7 +213,7 @@ class CalculatorPage(QWidget):
         separator.setFrameShadow(QFrame.Sunken)
         return separator
 
-    # ----------------------------- connections ----------------------------
+    # ----------------------------- Conexiones -----------------------------
     def _wire_events(self) -> None:
         self.rows_spin.valueChanged.connect(self._on_dimensions_changed)
         self.cols_spin.valueChanged.connect(self._on_dimensions_changed)
@@ -222,7 +222,7 @@ class CalculatorPage(QWidget):
         self.example_button.clicked.connect(self._on_example_clicked)
         self.btn_show_steps.clicked.connect(self._handle_show_steps)
 
-    # ---------------------------- event handlers -------------------------
+    # ---------------------------- Manejadores de eventos -------------------------
     def _on_dimensions_changed(self) -> None:
         m = self.rows_spin.value()
         n = self.cols_spin.value()
@@ -267,7 +267,7 @@ class CalculatorPage(QWidget):
             return
         dialogs.show_steps_dialog(self, self._last_steps, self._last_pivot_cols or [])
 
-    # --------------------------- view updates ----------------------------
+    # --------------------------- Actualización de la vista ----------------------------
     def _update_table_dimensions(self) -> None:
         rows = self.view_model.rows
         cols = self.view_model.cols + 1
@@ -307,7 +307,7 @@ class CalculatorPage(QWidget):
             if widget:
                 widget.deleteLater()
 
-    # ----------------------------- utilities -----------------------------
+    # ----------------------------- Utilidades -----------------------------
     def export_state(self) -> dict:
         """Expose a snapshot for debugging or future persistence."""
 

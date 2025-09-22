@@ -1,9 +1,9 @@
-"""Reusable dialogs to present Gauss–Jordan traces.
+"""Diálogos reutilizables para mostrar la traza de Gauss-Jordan.
 
-The visual layout follows the step-by-step presentations suggested by
-Grossman, *Álgebra Lineal*, 8ª ed., cap. 2, where each row operation is
-paired with the updated matrix. Keeping the construction here prevents
-code duplication across the different feature pages.
+El diseño sigue la presentación paso a paso sugerida por Grossman, *Álgebra
+Lineal* (8ª ed., cap. 2), donde cada operación se acompaña de la matriz
+actualizada. Mantener la construcción en este módulo evita duplicar código
+en las distintas páginas.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ TEXT_COLOR = QColor(255, 255, 255)
 
 
 def create_step_widget(step: StepVM) -> QWidget:
-    """Create a compact widget that shows one Gauss–Jordan operation."""
+    """Crea un widget compacto con la información de una operación Gauss-Jordan."""
 
     pivot_txt = ""
     if step.pivot_row is not None and step.pivot_col is not None:
@@ -76,7 +76,7 @@ def show_steps_dialog(
     pivot_cols: Iterable[int] = (),
     title: str = "Pasos Gauss–Jordan",
 ) -> None:
-    """Open a modal dialog containing all recorded steps."""
+    """Abre un diálogo modal con todos los pasos registrados."""
 
     if not steps:
         return

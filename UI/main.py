@@ -41,6 +41,7 @@ from views.calculator_page import CalculatorPage
 from views.combination_page import CombinationPage
 from views.home_page import HomePage
 from views.matrix_equation_page import MatrixEquationPage
+from views.mer_page import MerPage
 from views.vector_properties_page import VectorPropertiesPage
 
 
@@ -57,14 +58,14 @@ class MatrixCalculatorWindow(QMainWindow):
         self._nav_collapsed = False
         self._apply_dark_theme()
 
-    # ---------------------- View model composition ----------------------
+    # ---------------------- Composición de ViewModels ----------------------
     def _create_view_models(self) -> None:
         self.calculator_vm = MatrixCalculatorViewModel()
         self.vector_vm = VectorPropiedadesViewModel()
         self.combination_vm = CombinacionLinealViewModel()
         self.matrix_eq_vm = MatrixEquationViewModel()
 
-    # ----------------------------- UI setup -----------------------------
+    # ----------------------------- Configuración de UI -----------------------------
     def _build_ui(self) -> None:
         central = QWidget(self)
         self.setCentralWidget(central)
@@ -82,20 +83,21 @@ class MatrixCalculatorWindow(QMainWindow):
         self.pages: Dict[str, Tuple[QWidget, QPushButton]] = {}
         self._register_pages()
 
-        # Navegar por defecto a la calculadora
-        self._set_current_page("calculator")
+        # Seleccionar la página de inicio por defecto
+        self._set_current_page("home")
 
     def _build_nav_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("navPanel")
+        panel.setProperty("collapsed", False)
         panel.setFixedWidth(200)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(8, 12, 8, 12)
+        layout.setSpacing(12)
 
         top_bar = QHBoxLayout()
         top_bar.setContentsMargins(0, 0, 0, 0)
-        top_bar.setSpacing(0)
+        top_bar.setSpacing(8)
 
         self.nav_toggle = QPushButton("≡")
         self.nav_toggle.setObjectName("navToggleButton")
@@ -105,20 +107,24 @@ class MatrixCalculatorWindow(QMainWindow):
         top_bar.addWidget(self.nav_toggle)
 
         title = QLabel("Calculadora")
+        title.setObjectName("navTitle")
         font = QFont()
         font.setPointSize(14)
         font.setBold(True)
         title.setFont(font)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self._nav_title_label = title
-        top_bar.addWidget(title)
-        top_bar.addStretch(1)
+        top_bar.addWidget(title, 1)
         layout.addLayout(top_bar)
 
         self.nav_buttons: Dict[str, QPushButton] = {}
-        self._nav_button_container = layout
-        layout.addSpacing(8)
+        self._nav_buttons_layout = QVBoxLayout()
+        self._nav_buttons_layout.setContentsMargins(0, 8, 0, 0)
+        self._nav_buttons_layout.setSpacing(6)
+        layout.addLayout(self._nav_buttons_layout)
+        layout.addStretch(1)
         return panel
+
 
     def _create_nav_button(self, key: str, text: str, index: int) -> QPushButton:
         button = QPushButton(text)
@@ -128,13 +134,14 @@ class MatrixCalculatorWindow(QMainWindow):
         button.setAutoExclusive(True)
         button.clicked.connect(lambda: self._on_nav_clicked(key, index))
         self.nav_buttons[key] = button
-        self._nav_button_container.addWidget(button)
+        self._nav_buttons_layout.addWidget(button)
         return button
 
     def _register_pages(self) -> None:
         pages = [
+            ("home", "Inicio", HomePage()),
             ("calculator", "Resolver", CalculatorPage(self.calculator_vm)),
-            ("home", "MER", HomePage()),
+            ("mer", "MER", MerPage()),
             ("vectors", "Propiedades ℝ^n", VectorPropertiesPage(self.vector_vm)),
             ("combination", "Combinación", CombinationPage(self.combination_vm)),
             ("matrix_eq", "AX = B", MatrixEquationPage(self.matrix_eq_vm)),
@@ -145,9 +152,9 @@ class MatrixCalculatorWindow(QMainWindow):
             self.stack.addWidget(widget)
             self.pages[key] = (widget, button)
 
-        self._nav_button_container.addStretch(1)
+        self._nav_buttons_layout.addStretch(1)
 
-    # ----------------------------- navigation ---------------------------
+    # ----------------------------- Navegación ---------------------------
     def _on_nav_clicked(self, key: str, index: int) -> None:
         self.stack.setCurrentIndex(index)
         for name, (_, button) in self.pages.items():
@@ -162,7 +169,7 @@ class MatrixCalculatorWindow(QMainWindow):
     def _toggle_nav_panel(self) -> None:
         self._nav_collapsed = not self._nav_collapsed
         if self._nav_collapsed:
-            self.nav_panel.setFixedWidth(60)
+            self.nav_panel.setFixedWidth(64)
             self._nav_title_label.setVisible(False)
             for button in self.nav_buttons.values():
                 button.setVisible(False)
@@ -172,7 +179,11 @@ class MatrixCalculatorWindow(QMainWindow):
             for button in self.nav_buttons.values():
                 button.setVisible(True)
 
-    # ------------------------------ styling -----------------------------
+        self.nav_panel.setProperty("collapsed", self._nav_collapsed)
+        self.nav_panel.style().unpolish(self.nav_panel)
+        self.nav_panel.style().polish(self.nav_panel)
+
+    # ------------------------------ Estilos ------------------------------
     def _apply_dark_theme(self) -> None:
         palette = QPalette()
         palette.setColor(QPalette.Window, QColor(10, 19, 43))
@@ -232,9 +243,41 @@ class MatrixCalculatorWindow(QMainWindow):
                 border: 1px solid #2b4168;
                 font-weight: bold;
             }
+            QMessageBox {
+                background-color: #11284a;
+                color: #e6effb;
+                border: 1px solid #365a8e;
+            }
+            QMessageBox QLabel { color: #e6effb; }
+            QMessageBox QPushButton {
+                background-color: #365a8e;
+                border: 1px solid #407dbc;
+                border-radius: 4px;
+                padding: 6px 12px;
+                color: #ffffff;
+            }
+            QMessageBox QPushButton:hover { background-color: #407dbc; }
+            QMessageBox QPushButton:pressed { background-color: #2a4475; }
             #navPanel {
                 background-color: #11284a;
                 border-right: 1px solid #2b4168;
+            }
+            #navPanel[collapsed="true"] {
+                border-right: none;
+                background-color: #0d1c36;
+            }
+            #navToggleButton {
+                background-color: #243f6b;
+                border: 1px solid #365a8e;
+                border-radius: 6px;
+                padding: 6px 8px;
+                color: #e6effb;
+            }
+            #navToggleButton:hover { background-color: #2f5288; }
+            #navToggleButton:pressed { background-color: #1b2f55; }
+            #navTitle {
+                color: #ffffff;
+                padding-left: 6px;
             }
             #navButton {
                 background-color: transparent;
@@ -243,10 +286,15 @@ class MatrixCalculatorWindow(QMainWindow):
                 padding: 12px 16px;
                 text-align: left;
                 font-size: 13px;
+                border-radius: 6px;
             }
             #navButton:hover { background-color: #1c3156; }
-            #navButton:checked { background-color: #365a8e; }
+            #navButton:checked {
+                background-color: #365a8e;
+                font-weight: bold;
+            }
             QScrollArea { border: none; }
+            QScrollArea > QWidget > QWidget { background-color: #1c3156; }
             """
         )
 

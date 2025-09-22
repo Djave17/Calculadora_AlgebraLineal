@@ -105,7 +105,7 @@ class VectorPropertiesPage(QWidget):
         self.btn_props.clicked.connect(self._on_verify_properties)
         self.btn_clear.clicked.connect(self._on_clear)
 
-    # --------------------------- event handlers -------------------------
+    # --------------------------- Manejadores de eventos -------------------------
     def _on_sum_vectors(self) -> None:
         try:
             u = self._vm.parse_vector(self.vector_u_input.text())

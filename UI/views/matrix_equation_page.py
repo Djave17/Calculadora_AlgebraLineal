@@ -149,7 +149,7 @@ class MatrixEquationPage(QWidget):
         self.steps_button.clicked.connect(self._on_show_steps)
         self.clear_button.clicked.connect(self._on_clear)
 
-    # --------------------------- core actions ----------------------------
+    # --------------------------- Acciones principales ----------------------------
     def _update_tables(self) -> None:
         rows_a = self.rows_spin.value()
         rows_b = self.b_rows_spin.value()

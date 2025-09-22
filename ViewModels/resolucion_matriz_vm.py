@@ -1,32 +1,26 @@
 """
-View models for the matrix calculator application.
+ViewModels de la calculadora de matrices.
 
-This module defines a set of plain data classes used to transport data
-between the domain layer (the algebraic solver) and the user interface.
-The classes here encapsulate the results of solving a linear system as
-well as the individual steps of the Gauss–Jordan elimination process.
-In addition, it provides a view model class that acts as a façade for
-the solver, hiding the complexity of constructing the system and
-translating the solver's output into a form suitable for presentation.
+El módulo reúne varias `dataclasses` que sirven como transporte de datos
+entre la capa de dominio (operadores algebraicos) y la interfaz de
+usuario. Aquí se describen los resultados de un sistema lineal, los pasos
+del proceso de Gauss-Jordan y el `ViewModel` que actúa como fachada del
+solucionador.
 
-The view model design follows the MVVM (Model–View–ViewModel) pattern:
+El diseño sigue el patrón MVVM (Model-View-ViewModel):
 
-- **Model**: The underlying algebraic classes (`Matriz`, `SistemaLineal`,
-  `SolucionadorGaussJordan`, etc.) reside in the `Models` and
-  `Operadores` packages. They contain the core logic for manipulating
-  matrices and resolving linear systems.
-- **ViewModel**: This module. It orchestrates calls to the solver,
-  stores the current problem definition (dimensions, method) and
-  exposes the solution in a structured way that the view can bind to.
-- **View**: Implemented in `UI/main.py` using PySide. The view reacts
-  to user input (changes in the matrix table, button clicks) by
-  updating the view model and queries the view model for results.
+- **Modelo**: Las clases algebraicas (`Matriz`, `SistemaLineal`,
+  `SolucionadorGaussJordan`, etc.) ubicadas en `Models` y `Operadores`,
+  encargadas de la lógica matemática.
+- **ViewModel**: Este módulo. Orquesta las llamadas al solucionador,
+  conserva las dimensiones y expone los datos listos para la vista.
+- **Vista**: Implementada en `UI/main.py` con PySide6. Responde a la
+  interacción del usuario (tabla, botones) consultando este ViewModel.
 
-All numerical data is stored as Python floats; conversion from string
-inputs occurs in the view layer. The view model does not perform any
-UI operations (such as showing dialogs or manipulating widgets) in
-accordance with the separation of concerns required by the MVVM
-pattern.
+Todos los datos numéricos se manejan como `float`; la conversión desde
+cadenas ocurre en la vista. El ViewModel evita realizar operaciones de
+IU (mostrar diálogos, manipular widgets) para mantener la separación de
+responsabilidades indicada por MVVM.
 """
 
 from __future__ import annotations
@@ -34,10 +28,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional
 
-# Import domain classes. These imports are lazily resolved at runtime when
-# the solver is invoked. If these modules are missing (for example in
-# environments where only the UI is available), an ImportError will be
-# raised when solve() is called.
+# Importamos clases del dominio. Estas importaciones se resuelven de forma
+# diferida al invocar el solucionador; si faltan (por ejemplo en entornos
+# donde solo está disponible la UI) se lanzará ImportError al llamar a solve().
 from Models.matriz import Matriz
 from Operadores.sistema_lineal import SistemaLineal, SistemaMatricial
 from Operadores.SolucionGaussJordan.solucion_gauss_jordan import SolucionadorGaussJordan
@@ -46,34 +39,34 @@ from Operadores.estrategia_pivoteo import PivoteoParcial
 
 @dataclass
 class StepVM:
-    """Represents a single row operation performed during Gauss–Jordan.
+    """Representa una operación elemental aplicada durante Gauss-Jordan.
 
-    Each step includes the type of operation, the pivot position, the
-    affected rows, the factor used (if any), the matrix before the
-    operation and the matrix after the operation. The matrix is
-    represented as a list of lists of floats (the augmented matrix).
+    Cada paso almacena el tipo de operación, el pivote utilizado, los
+    renglones afectados, el factor empleado (si corresponde) y la matriz
+    antes y después de ejecutar la operación. La matriz se guarda como una
+    lista de listas de flotantes correspondiente a la matriz aumentada.
 
-    Attributes
-    ----------
+    Atributos
+    ---------
     number: int
-        1-based index of the step in the overall sequence.
+        Índice 1-based del paso dentro de la secuencia completa.
     operation: str
-        A short code identifying the type of operation (e.g. "INTERCAMBIO_FILAS",
-        "ESCALAR_FILA", "ELIMINAR_DEBAJO", "ELIMINAR_ENCIMA", "NORMALIZAR_PIVOTE").
+        Código corto de la operación (ej. "INTERCAMBIO_FILAS", "ESCALAR_FILA",
+        "ELIMINAR_DEBAJO", "ELIMINAR_ENCIMA", "NORMALIZAR_PIVOTE").
     description: str
-        Human-readable description of the operation in Spanish.
+        Descripción en lenguaje natural (español) de la operación realizada.
     before_matrix: List[List[float]]
-        Snapshot of the augmented matrix before performing the operation.
+        Copia de la matriz aumentada antes de aplicar la operación.
     after_matrix: List[List[float]]
-        Snapshot of the augmented matrix after performing the operation.
+        Copia de la matriz aumentada después de aplicar la operación.
     pivot_row: Optional[int]
-        The row index of the pivot used for the operation, if applicable.
+        Índice de renglón del pivote empleado, cuando corresponde.
     pivot_col: Optional[int]
-        The column index of the pivot used for the operation, if applicable.
-    affected_rows: List[int]
-        List of row indices affected by this operation.
+        Índice de columna del pivote empleado, cuando corresponde.
+    affected_rows: Optional[List[int]]
+        Renglones impactados por la operación.
     factor: Optional[float]
-        The scaling factor used when combining rows (None when not applicable).
+        Factor multiplicativo usado en combinaciones lineales (None si no aplica).
     """
 
     number: int
@@ -89,24 +82,22 @@ class StepVM:
 
 @dataclass
 class ParametricVM:
-    """Represents the parametric form of a solution for systems with infinitely
-    many solutions.
+    """Describe la forma paramétrica de un sistema con infinitas soluciones.
 
-    A system with rank r < n (n variables) has n - r free variables. The
-    solution can be expressed as a particular solution plus a linear
-    combination of direction vectors. This class encapsulates that data
-    for presentation.
+    Si el rango es r < n (n variables), existen n - r variables libres. La
+    solución se expresa como una solución particular más una combinación
+    lineal de vectores dirección. Esta clase reúne esa información para la
+    vista.
 
-    Attributes
-    ----------
+    Atributos
+    ---------
     particular: List[float]
-        A particular solution vector (size n).
+        Solución particular del sistema (longitud n).
     directions: List[List[float]]
-        One direction vector for each free variable. Each direction
-        vector has size n and represents the change in solution when
-        increasing its associated parameter by one.
+        Vectores dirección asociados a cada variable libre; indican cómo
+        cambia la solución al incrementar su parámetro en una unidad.
     free_vars: List[int]
-        Indices of the variables that are free (0-based).
+        Índices (0-based) de las variables libres.
     """
 
     particular: List[float]
@@ -116,26 +107,22 @@ class ParametricVM:
 
 @dataclass
 class ResultVM:
-    """View model for the result of solving a linear system.
+    """ViewModel con el resultado de resolver un sistema lineal.
 
-    Attributes
-    ----------
+    Atributos
+    ---------
     status: str
-        One of "UNICA", "INFINITAS" or "INCONSISTENTE".
+        "UNICA", "INFINITAS" o "INCONSISTENTE" según el diagnóstico.
     solution: Optional[List[float]]
-        If the system has a unique solution, this contains the values of
-        the variables in order. Otherwise, None.
+        Valores de las variables cuando la solución es única; en otro caso `None`.
     parametric: Optional[ParametricVM]
-        If the system has infinite solutions, this holds the parametric
-        representation. Otherwise, None.
-    pivot_cols: List[int]
-        Indices of the pivot columns (0-based). Useful for diagnostics.
-    free_vars: List[int]
-        Indices of the free variables (0-based).
-    steps: List[StepVM]
-        Sequence of steps taken during the Gauss–Jordan elimination,
-        including the initial state. The view can iterate over this to
-        present a step-by-step explanation.
+        Representación paramétrica cuando existen infinitas soluciones; `None` en otro caso.
+    pivot_cols: Optional[List[int]]
+        Índices (0-based) de las columnas pivote, útil para diagnóstico.
+    free_vars: Optional[List[int]]
+        Índices (0-based) de las variables libres.
+    steps: Optional[List[StepVM]]
+        Secuencia de pasos registrada durante Gauss-Jordan, incluido el estado inicial.
     """
 
     status: str
@@ -164,24 +151,22 @@ class MatrixEquationResultVM:
 
 
 class MatrixCalculatorViewModel:
-    """View model orchestrating the process of solving linear systems.
+    """Coordina la resolución de sistemas lineales con Gauss-Jordan.
 
-    The view model stores the dimensions of the matrix and the chosen
-    method (currently only Gauss–Jordan is implemented). It exposes a
-    `solve` method that accepts a list of rows (each row is a list of
-    floats representing a row of the augmented matrix [A|b]) and
-    returns a `ResultVM` with the outcome. Input validation and error
-    handling for user input should be done at the view layer; this
-    class assumes the data passed in conforms to the expected shapes.
+    Conserva las dimensiones de la matriz, el método elegido (por ahora
+    Gauss-Jordan) y expone `solve`, que recibe filas de la matriz
+    aumentada [A|b] y devuelve un `ResultVM` con el diagnóstico. La vista
+    es responsable de validar y convertir las entradas; este ViewModel
+    asume que los datos ya tienen la forma esperada.
     """
 
     def __init__(self) -> None:
-        # Default dimensions. The view can change these through its UI.
+        # Dimensiones por defecto, modificables desde la interfaz de usuario.
         self._rows: int = 2
-        self._cols: int = 3  # number of variables; augmented matrix has cols+1 columns
+        self._cols: int = 3  # número de variables; la matriz aumentada usa cols+1 columnas
         self._method: str = "Gauss-Jordan"
 
-    # Accessor and mutator for number of equations (rows)
+    # Accesores y mutadores para la cantidad de ecuaciones (filas)
     @property
     def rows(self) -> int:
         return self._rows
@@ -190,7 +175,7 @@ class MatrixCalculatorViewModel:
     def rows(self, value: int) -> None:
         self._rows = max(1, value)
 
-    # Accessor and mutator for number of variables (columns)
+    # Accesores y mutadores para la cantidad de variables (columnas)
     @property
     def cols(self) -> int:
         return self._cols
@@ -205,31 +190,29 @@ class MatrixCalculatorViewModel:
 
     @method.setter
     def method(self, value: str) -> None:
-        # At present only Gauss–Jordan is implemented. In the future,
-        # additional methods could be supported.
+        # Por ahora solo se implementa Gauss-Jordan; en el futuro se pueden añadir otros métodos.
         self._method = value
 
     def solve(self, augmented: List[List[float]]) -> ResultVM:
-        """Solve the linear system defined by an augmented matrix.
+        """Resuelve el sistema lineal descrito por una matriz aumentada.
 
-        Parameters
-        ----------
+        Parámetros
+        -----------
         augmented: List[List[float]]
-            A list of `rows` lists, each containing `cols + 1` floats. The
-            first `cols` columns constitute the coefficient matrix A and
-            the last column constitutes the vector b.
+            Lista de `rows` filas con `cols + 1` flotantes. Las primeras
+            `cols` columnas corresponden a la matriz A y la última al vector b.
 
-        Returns
-        -------
+        Devuelve
+        --------
         ResultVM
-            A view model containing the solution state and, if requested,
-            the sequence of steps taken.
+            ViewModel con el estado de la solución y, si se solicitó, la
+            secuencia de pasos aplicados.
 
-        Raises
-        ------
+        Excepciones
+        -----------
         ValueError
-            If the shape of the augmented matrix does not match the
-            expected dimensions.
+            Se lanza cuando la forma de la matriz aumentada no coincide con
+            las dimensiones esperadas.
         """
         if len(augmented) != self._rows:
             raise ValueError(
@@ -241,7 +224,7 @@ class MatrixCalculatorViewModel:
                     f"La fila {i+1} debe tener exactamente {self._cols + 1} números (incluyendo b)"
                 )
 
-        # Build the coefficient matrix A and vector b for the domain layer
+        # Construir la matriz de coeficientes A y el vector b para la capa de dominio
         A_data = [row[:-1] for row in augmented]
         b_data = [row[-1] for row in augmented]
 
