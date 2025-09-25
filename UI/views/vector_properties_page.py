@@ -45,7 +45,7 @@ class VectorPropertiesPage(QWidget):
         layout.addWidget(title)
 
         explanation = QLabel(
-            "Explora la suma u + v, la multiplicación α·u y verifica las "
+            "Explora la suma u + v, la resta u - v, la multiplicación α·u y verifica las "
             "propiedades conmutativa, asociativa, del vector cero y del "
             "vector opuesto."
         )
@@ -84,10 +84,12 @@ class VectorPropertiesPage(QWidget):
 
         button_row = QHBoxLayout()
         self.btn_sum = QPushButton("u + v")
+        self.btn_sub = QPushButton("u - v")
         self.btn_scalar = QPushButton("α · u")
         self.btn_props = QPushButton("Verificar propiedades")
         self.btn_clear = QPushButton("Limpiar")
         button_row.addWidget(self.btn_sum)
+        button_row.addWidget(self.btn_sub)
         button_row.addWidget(self.btn_scalar)
         button_row.addWidget(self.btn_props)
         button_row.addWidget(self.btn_clear)
@@ -101,6 +103,7 @@ class VectorPropertiesPage(QWidget):
 
     def _wire_events(self) -> None:
         self.btn_sum.clicked.connect(self._on_sum_vectors)
+        self.btn_sub.clicked.connect(self._on_sub_vectors)
         self.btn_scalar.clicked.connect(self._on_scalar_mult)
         self.btn_props.clicked.connect(self._on_verify_properties)
         self.btn_clear.clicked.connect(self._on_clear)
@@ -114,6 +117,17 @@ class VectorPropertiesPage(QWidget):
             lines = [f"Resultado: u + v = {helpers.format_vector(res.result)}", "", "Pasos:"]
             lines.extend(res.steps)
             self.vector_result_output.setPlainText("\n".join(lines))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+
+    def _on_sub_vectors(self) -> None:
+        try:
+            u = self._vm.parse_vector(self.vector_u_input.text())
+            v = self._vm.parse_vector(self.vector_v_input.text())
+            res = self._vm.subtract_vectors(u, v)
+            lineas = [f"Resultado: u - v = {helpers.format_vector(res.result)}", "", "Pasos:"]
+            lineas.extend(res.steps)
+            self.vector_result_output.setPlainText("\n".join(lineas))
         except Exception as exc:
             QMessageBox.critical(self, "Error", str(exc))
 

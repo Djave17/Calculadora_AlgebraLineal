@@ -93,7 +93,7 @@ class ParametricVM:
     ---------
     particular: List[float]
         Solución particular del sistema (longitud n).
-    directions: List[List[float]]
+    direcciones: List[List[float]]
         Vectores dirección asociados a cada variable libre; indican cómo
         cambia la solución al incrementar su parámetro en una unidad.
     free_vars: List[int]
@@ -101,8 +101,17 @@ class ParametricVM:
     """
 
     particular: List[float]
-    directions: List[List[float]]
+    direcciones: List[List[float]]
     free_vars: List[int]
+
+    @property
+    def directions(self) -> List[List[float]]:
+        """Alias en inglés para compatibilidad retroactiva."""
+        return self.direcciones
+
+    @directions.setter
+    def directions(self, value: List[List[float]]) -> None:
+        self.direcciones = value
 
 
 @dataclass
@@ -326,7 +335,7 @@ class MatrixCalculatorViewModel:
             if param is not None:
                 param_vm = ParametricVM(
                     particular=param.particular,
-                    directions=param.direcciones,
+                    direcciones=param.direcciones,
                     free_vars=param.libres,
                 )
             else:

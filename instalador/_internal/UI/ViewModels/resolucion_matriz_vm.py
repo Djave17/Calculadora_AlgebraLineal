@@ -89,29 +89,36 @@ class StepVM:
 
 @dataclass
 class ParametricVM:
-    """Represents the parametric form of a solution for systems with infinitely
-    many solutions.
+    """Representa la forma paramétrica de un sistema con infinitas soluciones.
 
-    A system with rank r < n (n variables) has n - r free variables. The
-    solution can be expressed as a particular solution plus a linear
-    combination of direction vectors. This class encapsulates that data
-    for presentation.
+    Si el rango es r < n (n variables), existen n - r variables libres. La
+    solución se expresa como una solución particular más una combinación
+    lineal de vectores dirección. Esta clase reúne esa información para la
+    vista.
 
-    Attributes
-    ----------
+    Atributos
+    ---------
     particular: List[float]
-        A particular solution vector (size n).
-    directions: List[List[float]]
-        One direction vector for each free variable. Each direction
-        vector has size n and represents the change in solution when
-        increasing its associated parameter by one.
+        Solución particular del sistema (longitud n).
+    direcciones: List[List[float]]
+        Vectores dirección asociados a cada variable libre; indican cómo
+        cambia la solución al incrementar su parámetro en una unidad.
     free_vars: List[int]
-        Indices of the variables that are free (0-based).
+        Índices (0-based) de las variables libres.
     """
 
     particular: List[float]
-    directions: List[List[float]]
+    direcciones: List[List[float]]
     free_vars: List[int]
+
+    @property
+    def directions(self) -> List[List[float]]:
+        """Alias en inglés para compatibilidad retroactiva."""
+        return self.direcciones
+
+    @directions.setter
+    def directions(self, value: List[List[float]]) -> None:
+        self.direcciones = value
 
 
 @dataclass
@@ -277,7 +284,7 @@ class MatrixCalculatorViewModel:
             if param is not None:
                 param_vm = ParametricVM(
                     particular=param.particular,
-                    directions=param.direcciones,
+                    direcciones=param.direcciones,
                     free_vars=param.libres,
                 )
             else:

@@ -64,6 +64,17 @@ class VectorPropiedadesViewModel:
             res.append(ri)
         return VectorResultVM("sum", res, steps)
 
+    def subtract_vectors(self, u: List[float], v: List[float]) -> VectorResultVM:
+        """Calcula u - v componente a componente."""
+        self._check_same_dim(u, v)
+        steps = [f"Resta componente a componente (dim={len(u)})"]
+        resultado = []
+        for i, (ui, vi) in enumerate(zip(u, v), start=1):
+            valor = ui - vi
+            steps.append(f"x{i}: {ui} - {vi} = {valor}")
+            resultado.append(valor)
+        return VectorResultVM("sub", resultado, steps)
+
     def scalar_mult(self, alpha: float, u: List[float]) -> VectorResultVM:
         steps = [f"Multiplicación por escalar α = {alpha}"]
         res = []
