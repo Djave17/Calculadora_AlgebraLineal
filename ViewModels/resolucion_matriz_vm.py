@@ -17,8 +17,8 @@ El diseño sigue el patrón MVVM (Model-View-ViewModel):
 - **Vista**: Implementada en `UI/main.py` con PySide6. Responde a la
   interacción del usuario (tabla, botones) consultando este ViewModel.
 
-Todos los datos numéricos se manejan como `float`; la conversión desde
-cadenas ocurre en la vista. El ViewModel evita realizar operaciones de
+Todos los datos numéricos se representan con `Fraction` para preservar
+exactitud; la conversión desde cadenas ocurre en la vista. El ViewModel evita realizar operaciones de
 IU (mostrar diálogos, manipular widgets) para mantener la separación de
 responsabilidades indicada por MVVM.
 """
@@ -26,6 +26,7 @@ responsabilidades indicada por MVVM.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import List, Optional
 
 # Importamos clases del dominio. Estas importaciones se resuelven de forma
@@ -44,7 +45,7 @@ class StepVM:
     Cada paso almacena el tipo de operación, el pivote utilizado, los
     renglones afectados, el factor empleado (si corresponde) y la matriz
     antes y después de ejecutar la operación. La matriz se guarda como una
-    lista de listas de flotantes correspondiente a la matriz aumentada.
+    lista de listas de fracciones correspondiente a la matriz aumentada.
 
     Atributos
     ---------
@@ -55,9 +56,9 @@ class StepVM:
         "ELIMINAR_DEBAJO", "ELIMINAR_ENCIMA", "NORMALIZAR_PIVOTE").
     description: str
         Descripción en lenguaje natural (español) de la operación realizada.
-    before_matrix: List[List[float]]
+    before_matrix: List[List[Fraction]]
         Copia de la matriz aumentada antes de aplicar la operación.
-    after_matrix: List[List[float]]
+    after_matrix: List[List[Fraction]]
         Copia de la matriz aumentada después de aplicar la operación.
     pivot_row: Optional[int]
         Índice de renglón del pivote empleado, cuando corresponde.
@@ -65,19 +66,19 @@ class StepVM:
         Índice de columna del pivote empleado, cuando corresponde.
     affected_rows: Optional[List[int]]
         Renglones impactados por la operación.
-    factor: Optional[float]
+    factor: Optional[Fraction]
         Factor multiplicativo usado en combinaciones lineales (None si no aplica).
     """
 
     number: int
     operation: str
     description: str
-    before_matrix: List[List[float]]
-    after_matrix: List[List[float]]
+    before_matrix: List[List[Fraction]]
+    after_matrix: List[List[Fraction]]
     pivot_row: Optional[int] = None
     pivot_col: Optional[int] = None
     affected_rows: Optional[List[int]] = None
-    factor: Optional[float] = None
+    factor: Optional[Fraction] = None
 
 
 @dataclass
@@ -91,26 +92,26 @@ class ParametricVM:
 
     Atributos
     ---------
-    particular: List[float]
+    particular: List[Fraction]
         Solución particular del sistema (longitud n).
-    direcciones: List[List[float]]
+    direcciones: List[List[Fraction]]
         Vectores dirección asociados a cada variable libre; indican cómo
         cambia la solución al incrementar su parámetro en una unidad.
     free_vars: List[int]
         Índices (0-based) de las variables libres.
     """
 
-    particular: List[float]
-    direcciones: List[List[float]]
+    particular: List[Fraction]
+    direcciones: List[List[Fraction]]
     free_vars: List[int]
 
     @property
-    def directions(self) -> List[List[float]]:
+    def directions(self) -> List[List[Fraction]]:
         """Alias en inglés para compatibilidad retroactiva."""
         return self.direcciones
 
     @directions.setter
-    def directions(self, value: List[List[float]]) -> None:
+    def directions(self, value: List[List[Fraction]]) -> None:
         self.direcciones = value
 
 
@@ -122,7 +123,7 @@ class ResultVM:
     ---------
     status: str
         "UNICA", "INFINITAS" o "INCONSISTENTE" según el diagnóstico.
-    solution: Optional[List[float]]
+    solution: Optional[List[Fraction]]
         Valores de las variables cuando la solución es única; en otro caso `None`.
     parametric: Optional[ParametricVM]
         Representación paramétrica cuando existen infinitas soluciones; `None` en otro caso.
@@ -135,7 +136,7 @@ class ResultVM:
     """
 
     status: str
-    solution: Optional[List[float]] = None
+    solution: Optional[List[Fraction]] = None
     parametric: Optional[ParametricVM] = None
     pivot_cols: Optional[List[int]] = None
     free_vars: Optional[List[int]] = None
@@ -202,13 +203,13 @@ class MatrixCalculatorViewModel:
         # Por ahora solo se implementa Gauss-Jordan; en el futuro se pueden añadir otros métodos.
         self._method = value
 
-    def solve(self, augmented: List[List[float]]) -> ResultVM:
+    def solve(self, augmented: List[List[Fraction]]) -> ResultVM:
         """Resuelve el sistema lineal descrito por una matriz aumentada.
 
         Parámetros
         -----------
-        augmented: List[List[float]]
-            Lista de `rows` filas con `cols + 1` flotantes. Las primeras
+        augmented: List[List[Fraction]]
+            Lista de `rows` filas con `cols + 1` fracciones. Las primeras
             `cols` columnas corresponden a la matriz A y la última al vector b.
 
         Devuelve
@@ -242,8 +243,8 @@ class MatrixCalculatorViewModel:
 
     def solve_matrix_equation(
         self,
-        A_rows: List[List[float]],
-        B_rows: List[List[float]],
+        A_rows: List[List[Fraction]],
+        B_rows: List[List[Fraction]],
     ) -> MatrixEquationResultVM:
         """Resuelve AX = B tratando cada columna de B como un sistema independiente."""
         if not A_rows or not A_rows[0]:
@@ -285,8 +286,8 @@ class MatrixCalculatorViewModel:
 
     def _solve_with_rows(
         self,
-        A_rows: List[List[float]],
-        b_data: List[float],
+        A_rows: List[List[Fraction]],
+        b_data: List[Fraction],
         solver: Optional[SolucionadorGaussJordan] = None,
     ) -> ResultVM:
         if len(A_rows) != len(b_data):

@@ -4,6 +4,8 @@ from fractions import Fraction
 from Operadores.solvers import classify_solution, solve_AX_B, solve_Ax_b
 from Operadores.vectores import check_neutro, check_conmutativa, Vector
 from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
+from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+from Operadores.SolucionGaussJordan.solucion import Solucion
 
 
 class TestSolvers(unittest.TestCase):
@@ -83,6 +85,7 @@ class TestViewModel(unittest.TestCase):
             "objetivo": "3, 3",
         }
         resultado = vm.combinacion_lineal(entrada)
+        self.assertTrue(resultado["verificacion"]["valido"])
         self.assertTrue(resultado["verificacion"]["coincide"])
         self.assertEqual(
             resultado["verificacion"]["b_calculado"],
@@ -100,6 +103,31 @@ class TestViewModel(unittest.TestCase):
         self.assertEqual(resultado["estado"], "INCONSISTENTE")
         self.assertNotIn("verificacion", resultado)
 
+    def test_verificacion_dimensiones_invalidas(self):
+        vm = LinearAlgebraViewModel()
+        A_rows = [
+            [Fraction(1), Fraction(0)],
+            [Fraction(0), Fraction(1)],
+        ]
+        solucion = Solucion(estado="UNICA", x=[Fraction(1)])
+        verificacion = vm._verificar_producto(A_rows, solucion, [Fraction(1), Fraction(0)])
+        self.assertFalse(verificacion["valido"])
+        self.assertFalse(verificacion["coincide"])
+        self.assertIn("solo está definido", verificacion["error"])
+
+
+class TestVectorPropiedadesViewModel(unittest.TestCase):
+    def test_parse_vector_with_fractions(self):
+        vm = VectorPropiedadesViewModel()
+        vector = vm.parse_vector("1/2, -3/4, 5")
+        self.assertEqual(vector, [Fraction(1, 2), Fraction(-3, 4), Fraction(5)])
+
+    def test_scalar_mult_fraction(self):
+        vm = VectorPropiedadesViewModel()
+        u = vm.parse_vector("1, 2")
+        alpha = vm.parse_scalar("3/5")
+        resultado = vm.scalar_mult(alpha, u)
+        self.assertEqual(resultado.result, [Fraction(3, 5), Fraction(6, 5)])
 
 if __name__ == "__main__":
     unittest.main()

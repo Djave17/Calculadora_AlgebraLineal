@@ -52,7 +52,9 @@ class VectorPropertiesPage(QWidget):
         explanation.setWordWrap(True)
         layout.addWidget(explanation)
 
-        instructions = QLabel("Introduce vectores separados por comas o espacios. Ej: 1, 2, 3")
+        instructions = QLabel(
+            "Introduce vectores separados por comas o espacios. Admite fracciones: 1/2, -3/4, etc."
+        )
         instructions.setWordWrap(True)
         layout.addWidget(instructions)
 
@@ -77,7 +79,7 @@ class VectorPropertiesPage(QWidget):
         scalar_row.addWidget(QLabel("Escalar α:"))
         self.scalar_input = QLineEdit()
         self.scalar_input.setMaximumWidth(120)
-        self.scalar_input.setPlaceholderText("Ej: 2")
+        self.scalar_input.setPlaceholderText("Ej: 2 o 3/5")
         scalar_row.addWidget(self.scalar_input)
         scalar_row.addStretch(1)
         layout.addLayout(scalar_row)
@@ -134,10 +136,7 @@ class VectorPropertiesPage(QWidget):
     def _on_scalar_mult(self) -> None:
         try:
             u = self._vm.parse_vector(self.vector_u_input.text())
-            alpha_str = self.scalar_input.text().strip()
-            if not alpha_str:
-                raise ValueError("Debes proporcionar un valor para α.")
-            alpha = float(alpha_str)
+            alpha = self._vm.parse_scalar(self.scalar_input.text())
             res = self._vm.scalar_mult(alpha, u)
             lines = [f"Resultado: α · u = {helpers.format_vector(res.result)}", "", "Pasos:"]
             lines.extend(res.steps)

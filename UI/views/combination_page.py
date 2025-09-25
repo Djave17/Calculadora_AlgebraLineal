@@ -7,6 +7,7 @@ columnas y resolver A*c = b mediante Gauss–Jordan (Lay, 2012, cap. 1.7).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import List, Optional
 
 from PySide6.QtCore import Qt
@@ -167,6 +168,17 @@ class CombinationPage(QWidget):
             lines.extend(helpers.matrix_lines(resultado.augmented_matrix, indent="  "))
             lines.append("")
             lines.extend(helpers.format_result_lines(resultado.solver_result, resultado.coefficient_labels))
+
+            solucion = resultado.solver_result.solution
+            if solucion is not None:
+                producto = self._multiplicar_columnas(generadores, solucion)
+                lines.append("")
+                lines.append("Verificación Ax = b:")
+                lines.append(f"  A·x = {helpers.format_vector(producto)}")
+                lines.append(f"  b   = {helpers.format_vector(objetivo)}")
+                coincide = producto == objetivo
+                lines.append(f"  Coinciden: {'sí' if coincide else 'no'}")
+
             lines.append("")
             lines.extend(helpers.format_steps_lines(resultado.solver_result))
 
@@ -194,3 +206,17 @@ class CombinationPage(QWidget):
             pivot_cols=self._last_result.explanation.solver_result.pivot_cols or [],
             title="Pasos Gauss–Jordan (combinación lineal)",
         )
+
+    # -------------------------- Helpers internos --------------------------
+    @staticmethod
+    def _multiplicar_columnas(
+        columnas: List[List[Fraction]],
+        coeficientes: List[Fraction],
+    ) -> List[Fraction]:
+        if not columnas:
+            return []
+        dimension = len(columnas[0])
+        return [
+            sum(coeficientes[j] * columnas[j][i] for j in range(len(columnas)))
+            for i in range(dimension)
+        ]

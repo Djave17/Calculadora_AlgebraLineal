@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import List
 
 from ViewModels.resolucion_matriz_vm import (
@@ -17,7 +18,7 @@ class CombinationResultVM:
 
     coefficient_labels: List[str]
     solver_result: ResultVM
-    augmented_matrix: List[List[float]]
+    augmented_matrix: List[List[Fraction]]
 
 
 class CombinacionLinealViewModel:
@@ -28,8 +29,8 @@ class CombinacionLinealViewModel:
 
     def analizar(
         self,
-        generadores: List[List[float]],
-        objetivo: List[float],
+        generadores: List[List[Fraction]],
+        objetivo: List[Fraction],
     ) -> CombinationResultVM:
         if not generadores:
             raise ValueError("Debes proporcionar al menos un vector generador.")

@@ -15,6 +15,8 @@ Separar estas rutinas evita que la ventana principal se convierta en un
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 from typing import Iterable, List, Sequence
 
 from PySide6.QtCore import Qt
@@ -23,7 +25,7 @@ from PySide6.QtWidgets import QTableWidget, QTableWidgetItem
 from ViewModels.resolucion_matriz_vm import ResultVM
 
 
-def matrix_lines(matrix: Sequence[Sequence[float]] | None, indent: str = "") -> List[str]:
+def matrix_lines(matrix: Sequence[Sequence[Fraction | float]] | None, indent: str = "") -> List[str]:
     """Renderiza una matriz aumentada fila por fila.
 
     El formato replica los ejemplos vistos en clase: cada fila se envuelve
@@ -119,22 +121,34 @@ def fill_table_with_zero(table: QTableWidget) -> None:
             item.setTextAlignment(Qt.AlignCenter)
 
 
-def table_to_matrix(table: QTableWidget) -> List[List[float]]:
-    """Convierte un ``QTableWidget`` en una matriz de flotantes.
+def _parse_number(text: str) -> Fraction:
+    """Convierte cadenas como ``3/5`` o ``2.75`` en fracciones exactas."""
+
+    normalized = text.replace(" ", "")
+    if normalized == "":
+        return Fraction(0)
+    try:
+        return Fraction(normalized)
+    except ValueError as exc:
+        raise ValueError(f"Valor no numérico: '{text}'") from exc
+
+
+def table_to_matrix(table: QTableWidget) -> List[List[Fraction]]:
+    """Convierte un ``QTableWidget`` en una matriz de fracciones.
 
     La transformación sigue el flujo descrito por Strang, *Linear Algebra and
     its Applications* (4ª ed., 2016, §3.2): la IU captura coeficientes y el
     ViewModel opera con arreglos numéricos.
     """
 
-    data: List[List[float]] = []
+    data: List[List[Fraction]] = []
     for i in range(table.rowCount()):
-        row_vals: List[float] = []
+        row_vals: List[Fraction] = []
         for j in range(table.columnCount()):
             item = table.item(i, j)
             text = item.text().strip() if item and item.text() else "0"
             try:
-                row_vals.append(float(text))
+                row_vals.append(_parse_number(text))
             except ValueError as exc:
                 raise ValueError(
                     f"Valor no numérico en fila {i + 1}, columna {j + 1}: '{text}'"
@@ -143,7 +157,7 @@ def table_to_matrix(table: QTableWidget) -> List[List[float]]:
     return data
 
 
-def columns_from_rows(rows: Sequence[Sequence[float]]) -> List[List[float]]:
+def columns_from_rows(rows: Sequence[Sequence[Fraction | float]]) -> List[List[Fraction]]:
     """Transpone una matriz dada por filas para obtener sus vectores columna."""
 
     if not rows:
@@ -152,10 +166,10 @@ def columns_from_rows(rows: Sequence[Sequence[float]]) -> List[List[float]]:
     for fila in rows:
         if len(fila) != num_cols:
             raise ValueError("Todas las filas deben tener la misma longitud.")
-    return [[rows[i][j] for i in range(len(rows))] for j in range(num_cols)]
+    return [[Fraction(rows[i][j]) for i in range(len(rows))] for j in range(num_cols)]
 
 
-def format_vector(values: Iterable[float]) -> str:
+def format_vector(values: Iterable[Fraction | float]) -> str:
     """Devuelve una representación tipo tupla ``(v1, v2, ...)``."""
 
     return "(" + ", ".join(str(x) for x in values) + ")"

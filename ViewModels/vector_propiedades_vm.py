@@ -3,136 +3,163 @@
 Se apoya en la teoría de Grossman (2019, cap. 2) para verificar las
 propiedades básicas de un espacio vectorial.
 """
-from dataclasses import dataclass
-from typing import List, Tuple, Optional
+
+from __future__ import annotations
+
 import re
+from dataclasses import dataclass
+from fractions import Fraction
+from typing import List, Optional, Tuple
+
 
 @dataclass
 class VectorResultVM:
     """Pequeña estructura para devolver resultado + pasos."""
-    operation: str            # "sum", "scalar", ...
-    result: List[float]
+
+    operation: str  # "sum", "scalar", ...
+    result: List[Fraction]
     steps: List[str]
+
 
 class VectorPropiedadesViewModel:
     """Lógica de operaciones y verificación de propiedades en R^n."""
-    def __init__(self, tol: float = 1e-9):
+
+    def __init__(self, tol: float = 1e-9) -> None:
         self.tol = tol
 
-    def parse_vector(self, text: str) -> List[float]:
-        """Convierte una cadena en lista de floats.
-        Permite: '1,2,3', '1 2 3', '(1, 2, 3)', '[1 2 3]'...
-        Lanza ValueError con mensaje útil si falla.
+    def parse_vector(self, text: str) -> List[Fraction]:
+        """Convierte una cadena en lista de fracciones exactas.
+
+        Acepta formatos como ``1,2,3/5`` o ``(1/2  3)`` y genera mensajes
+        claros si alguna componente no puede convertirse en número racional.
         """
+
         if text is None:
             raise ValueError("Entrada vacía para vector.")
         s = text.strip()
         if s == "":
             raise ValueError("Entrada vacía para vector.")
-        # quitar paréntesis/ corchetes y separar por comas/espacios
         s = s.replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
-        tokens = re.split(r'[,\s]+', s.strip())
-        vals = []
-        for t in tokens:
-            if t == "":
+        tokens = re.split(r"[\s,]+", s.strip())
+        valores: List[Fraction] = []
+        for token in tokens:
+            if token == "":
                 continue
             try:
-                vals.append(float(t))
-            except ValueError:
-                raise ValueError(f"Valor no numérico en vector: '{t}'")
-        if len(vals) == 0:
+                valores.append(Fraction(token))
+            except ValueError as exc:
+                raise ValueError(f"Valor no numérico en vector: '{token}'") from exc
+        if not valores:
             raise ValueError("No se detectaron números en el vector.")
-        return vals
+        return valores
 
-    def _check_same_dim(self, *vecs: List[float]) -> None:
+    def parse_scalar(self, text: str) -> Fraction:
+        """Interpreta el texto de la IU como un escalar (posible fracción)."""
+
+        if text is None:
+            raise ValueError("Debes proporcionar un valor para α.")
+        normalized = text.strip().replace(" ", "")
+        if normalized == "":
+            raise ValueError("Debes proporcionar un valor para α.")
+        try:
+            return Fraction(normalized)
+        except ValueError as exc:
+            raise ValueError(f"Valor no numérico para α: '{text}'") from exc
+
+    def _check_same_dim(self, *vecs: List[Fraction]) -> None:
         dims = [len(v) for v in vecs]
         if len(set(dims)) != 1:
-            raise ValueError(f"Los vectores deben tener la misma dimensión. Dimensiones detectadas: {dims}")
+            raise ValueError(
+                "Los vectores deben tener la misma dimensión. Dimensiones detectadas: "
+                f"{dims}"
+            )
 
-    def _approx_equal(self, a: List[float], b: List[float]) -> bool:
+    def _approx_equal(self, a: List[Fraction], b: List[Fraction]) -> bool:
         if len(a) != len(b):
             return False
         return all(abs(x - y) <= self.tol for x, y in zip(a, b))
 
-    def sum_vectors(self, u: List[float], v: List[float]) -> VectorResultVM:
+    def sum_vectors(self, u: List[Fraction], v: List[Fraction]) -> VectorResultVM:
         self._check_same_dim(u, v)
         steps = [f"Suma componente a componente (dim={len(u)})"]
-        res = []
+        resultado: List[Fraction] = []
         for i, (ui, vi) in enumerate(zip(u, v), start=1):
-            ri = ui + vi
-            steps.append(f"x{i}: {ui} + {vi} = {ri}")
-            res.append(ri)
-        return VectorResultVM("sum", res, steps)
+            valor = ui + vi
+            steps.append(f"x{i}: {ui} + {vi} = {valor}")
+            resultado.append(valor)
+        return VectorResultVM("sum", resultado, steps)
 
-    def subtract_vectors(self, u: List[float], v: List[float]) -> VectorResultVM:
-        """Calcula u - v componente a componente."""
+    def subtract_vectors(self, u: List[Fraction], v: List[Fraction]) -> VectorResultVM:
         self._check_same_dim(u, v)
         steps = [f"Resta componente a componente (dim={len(u)})"]
-        resultado = []
+        resultado: List[Fraction] = []
         for i, (ui, vi) in enumerate(zip(u, v), start=1):
             valor = ui - vi
             steps.append(f"x{i}: {ui} - {vi} = {valor}")
             resultado.append(valor)
         return VectorResultVM("sub", resultado, steps)
 
-    def scalar_mult(self, alpha: float, u: List[float]) -> VectorResultVM:
+    def scalar_mult(self, alpha: Fraction, u: List[Fraction]) -> VectorResultVM:
         steps = [f"Multiplicación por escalar α = {alpha}"]
-        res = []
+        resultado: List[Fraction] = []
         for i, ui in enumerate(u, start=1):
-            ri = alpha * ui
-            steps.append(f"x{i}: {alpha} * {ui} = {ri}")
-            res.append(ri)
-        return VectorResultVM("scalar", res, steps)
+            valor = alpha * ui
+            steps.append(f"x{i}: {alpha} * {ui} = {valor}")
+            resultado.append(valor)
+        return VectorResultVM("scalar", resultado, steps)
 
     def verify_properties(
         self,
-        u: List[float],
-        v: List[float],
-        w: Optional[List[float]] = None
+        u: List[Fraction],
+        v: List[Fraction],
+        w: Optional[List[Fraction]] = None,
     ) -> List[Tuple[str, bool, List[str]]]:
-        """
-        Verifica (y explica) las propiedades:
-          - Conmutativa de la suma
-          - Asociativa de la suma (usa w si se proporciona; si no, usa w=(1,...,1))
-          - Existencia del vector cero
-          - Existencia del vector opuesto
-        Devuelve lista de tuplas: (nombre_propiedad, cumple_bool, pasos_lista)
-        """
+        """Verifica y detalla las propiedades básicas de ℝⁿ."""
+
         self._check_same_dim(u, v)
         n = len(u)
         if w is None:
-            w = [1.0] * n
+            w = [Fraction(1) for _ in range(n)]
         else:
             self._check_same_dim(u, w)
 
-        results = []
+        resultados: List[Tuple[str, bool, List[str]]] = []
 
         # Conmutativa
-        s_uv = self.sum_vectors(u, v).result
-        s_vu = self.sum_vectors(v, u).result
-        ok = self._approx_equal(s_uv, s_vu)
-        steps = [f"u + v = {s_uv}", f"v + u = {s_vu}", "Comparación elemento a elemento."]
-        results.append(("Conmutativa", ok, steps))
+        suma_uv = self.sum_vectors(u, v).result
+        suma_vu = self.sum_vectors(v, u).result
+        ok = self._approx_equal(suma_uv, suma_vu)
+        pasos = [
+            f"u + v = {suma_uv}",
+            f"v + u = {suma_vu}",
+            "Comparación elemento a elemento.",
+        ]
+        resultados.append(("Conmutativa", ok, pasos))
 
         # Asociativa
-        left = self.sum_vectors(self.sum_vectors(u, v).result, w).result
-        right = self.sum_vectors(u, self.sum_vectors(v, w).result).result
-        ok = self._approx_equal(left, right)
-        steps = [f"(u + v) + w = {left}", f"u + (v + w) = {right}", f"w utilizado = {w}"]
-        results.append(("Asociativa", ok, steps))
+        izquierda = self.sum_vectors(self.sum_vectors(u, v).result, w).result
+        derecha = self.sum_vectors(u, self.sum_vectors(v, w).result).result
+        ok = self._approx_equal(izquierda, derecha)
+        pasos = [
+            f"(u + v) + w = {izquierda}",
+            f"u + (v + w) = {derecha}",
+            f"w utilizado = {w}",
+        ]
+        resultados.append(("Asociativa", ok, pasos))
 
         # Vector cero
-        zero = [0.0] * n
-        uzero = self.sum_vectors(u, zero).result
-        ok = self._approx_equal(uzero, u)
-        steps = [f"Vector cero = {zero}", f"u + 0 = {uzero}"]
-        results.append(("Existencia de vector cero", ok, steps))
+        cero = [Fraction(0) for _ in range(n)]
+        suma_con_cero = self.sum_vectors(u, cero).result
+        ok = self._approx_equal(suma_con_cero, u)
+        pasos = [f"Vector cero = {cero}", f"u + 0 = {suma_con_cero}"]
+        resultados.append(("Existencia de vector cero", ok, pasos))
 
         # Vector opuesto
-        neg_u = [-x for x in u]
-        u_plus_neg = self.sum_vectors(u, neg_u).result
-        ok = self._approx_equal(u_plus_neg, zero)
-        steps = [f"-u = {neg_u}", f"u + (-u) = {u_plus_neg}"]
-        results.append(("Existencia de vector opuesto", ok, steps))
+        opuesto = [-x for x in u]
+        suma_opuesto = self.sum_vectors(u, opuesto).result
+        ok = self._approx_equal(suma_opuesto, cero)
+        pasos = [f"-u = {opuesto}", f"u + (-u) = {suma_opuesto}"]
+        resultados.append(("Existencia de vector opuesto", ok, pasos))
 
-        return results
+        return resultados
+

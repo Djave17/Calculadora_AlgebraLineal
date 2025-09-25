@@ -209,18 +209,30 @@ class LinearAlgebraViewModel:
         solucion: Solucion,
         b_vector: Sequence[Fraction],
     ) -> Dict[str, object]:
-        resultado: Dict[str, object] = {}
+        resultado: Dict[str, object] = {
+            "b_objetivo": [str(Fraction(x)) for x in b_vector],
+        }
+
+        coeficientes: Sequence[Fraction] | None = None
         if solucion.estado == "UNICA" and solucion.x is not None:
-            calculado = self._multiplicar(A_rows, solucion.x)
-            resultado["b_calculado"] = [str(Fraction(x)) for x in calculado]
-            resultado["b_objetivo"] = [str(Fraction(x)) for x in b_vector]
-            resultado["coincide"] = calculado == list(b_vector)
+            coeficientes = solucion.x
         elif solucion.estado == "INFINITAS" and solucion.parametrica is not None:
-            particular = solucion.parametrica.particular
-            calculado = self._multiplicar(A_rows, particular)
-            resultado["b_calculado"] = [str(Fraction(x)) for x in calculado]
-            resultado["b_objetivo"] = [str(Fraction(x)) for x in b_vector]
-            resultado["coincide"] = calculado == list(b_vector)
+            coeficientes = solucion.parametrica.particular
+
+        if coeficientes is None:
+            return resultado
+
+        try:
+            calculado = self._multiplicar(A_rows, coeficientes)
+        except ValueError as exc:
+            resultado["valido"] = False
+            resultado["coincide"] = False
+            resultado["error"] = str(exc)
+            return resultado
+
+        resultado["valido"] = True
+        resultado["b_calculado"] = [str(Fraction(x)) for x in calculado]
+        resultado["coincide"] = calculado == list(b_vector)
         return resultado
 
     def _multiplicar(
@@ -228,7 +240,29 @@ class LinearAlgebraViewModel:
         A_rows: Sequence[Sequence[Fraction]],
         coeficientes: Sequence[Fraction],
     ) -> List[Fraction]:
+        self._validar_dimensiones_producto(A_rows, coeficientes)
         return [
             sum(Fraction(fila[j]) * Fraction(coeficientes[j]) for j in range(len(coeficientes)))
             for fila in A_rows
         ]
+
+    def _validar_dimensiones_producto(
+        self,
+        A_rows: Sequence[Sequence[Fraction]],
+        coeficientes: Sequence[Fraction],
+    ) -> None:
+        if not A_rows:
+            raise ValueError("La matriz A debe tener al menos una fila para definir Ax.")
+
+        num_columnas = len(A_rows[0])
+        for idx, fila in enumerate(A_rows, start=1):
+            if len(fila) != num_columnas:
+                raise ValueError(
+                    f"La fila {idx} de A tiene {len(fila)} entradas; se esperaban {num_columnas}."
+                )
+
+        if len(coeficientes) != num_columnas:
+            raise ValueError(
+                "El producto Ax solo está definido cuando x tiene tantas entradas como columnas de A "
+                "(Grossman & Flores Godoy, 2019; Lay, 2012)."
+            )
