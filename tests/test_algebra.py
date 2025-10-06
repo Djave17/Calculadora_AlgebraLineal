@@ -5,6 +5,7 @@ from Operadores.solvers import classify_solution, solve_AX_B, solve_Ax_b
 from Operadores.vectores import check_neutro, check_conmutativa, Vector
 from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
 from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+from ViewModels.vector_dependencia_vm import VectorDependenciaViewModel
 from Operadores.SolucionGaussJordan.solucion import Solucion
 
 
@@ -128,6 +129,28 @@ class TestVectorPropiedadesViewModel(unittest.TestCase):
         alpha = vm.parse_scalar("3/5")
         resultado = vm.scalar_mult(alpha, u)
         self.assertEqual(resultado.result, [Fraction(3, 5), Fraction(6, 5)])
+
+
+class TestVectorDependenciaViewModel(unittest.TestCase):
+    def test_independence_detected(self):
+        vm = VectorDependenciaViewModel()
+        generadores = [
+            [Fraction(1), Fraction(0)],
+            [Fraction(0), Fraction(1)],
+        ]
+        resultado = vm.analizar(generadores)
+        self.assertEqual(resultado.interpretation.level, "success")
+        self.assertIn("independientes", resultado.interpretation.summary.lower())
+
+    def test_dependence_detected(self):
+        vm = VectorDependenciaViewModel()
+        generadores = [
+            [Fraction(1), Fraction(2)],
+            [Fraction(2), Fraction(4)],
+        ]
+        resultado = vm.analizar(generadores)
+        self.assertEqual(resultado.interpretation.level, "warning")
+        self.assertIn("dependientes", resultado.interpretation.summary.lower())
 
 if __name__ == "__main__":
     unittest.main()

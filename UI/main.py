@@ -36,6 +36,7 @@ from ViewModels.combinacion_lineal_vm import CombinacionLinealViewModel
 from ViewModels.matrix_equation_vm import MatrixEquationViewModel
 from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel
 from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+from ViewModels.vector_dependencia_vm import VectorDependenciaViewModel
 
 from views.calculator_page import CalculatorPage
 from views.combination_page import CombinationPage
@@ -43,6 +44,7 @@ from views.home_page import HomePage
 from views.matrix_equation_page import MatrixEquationPage
 from views.mer_page import MerPage
 from views.vector_properties_page import VectorPropertiesPage
+from views.vector_dependence_page import VectorDependencePage
 
 
 class MatrixCalculatorWindow(QMainWindow):
@@ -64,6 +66,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self.vector_vm = VectorPropiedadesViewModel()
         self.combination_vm = CombinacionLinealViewModel()
         self.matrix_eq_vm = MatrixEquationViewModel()
+        self.dependence_vm = VectorDependenciaViewModel()
 
     # ----------------------------- Configuración de UI -----------------------------
     def _build_ui(self) -> None:
@@ -145,6 +148,7 @@ class MatrixCalculatorWindow(QMainWindow):
             ("vectors", "Propiedades ℝ^n", VectorPropertiesPage(self.vector_vm)),
             ("combination", "Combinación", CombinationPage(self.combination_vm)),
             ("matrix_eq", "AX = B", MatrixEquationPage(self.matrix_eq_vm)),
+            ("dependence", "Dependencia", VectorDependencePage(self.dependence_vm)),
         ]
 
         for index, (key, label, widget) in enumerate(pages):

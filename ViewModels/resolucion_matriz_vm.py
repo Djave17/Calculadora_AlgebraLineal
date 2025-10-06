@@ -160,6 +160,20 @@ class MatrixEquationResultVM:
     columns: List[ColumnResultVM]
 
 
+@dataclass
+class InterpretationVM:
+    """Resume el significado cualitativo del resultado del solver.
+
+    Se usa en la interfaz para comunicar, con lenguaje propio de la
+    teoría (Lay, 2012; Grossman, 2019), si el sistema es consistente,
+    si los vectores son dependientes, etc.
+    """
+
+    summary: str
+    details: List[str]
+    level: str
+
+
 class MatrixCalculatorViewModel:
     """Coordina la resolución de sistemas lineales con Gauss-Jordan.
 
@@ -367,3 +381,145 @@ class MatrixCalculatorViewModel:
         if any(status == "INFINITAS" for status in statuses):
             return "INFINITAS"
         return "UNICA"
+
+    @staticmethod
+    def interpret_result(
+        result: ResultVM,
+        *,
+        context: str,
+        is_homogeneous: bool,
+        variable_labels: List[str],
+    ) -> "InterpretationVM":
+        """Construye una interpretación textual del estado del sistema.
+
+        El razonamiento sigue los criterios clásicos: si un sistema
+        homogéneo solo tiene la solución trivial, los vectores columna
+        son independientes (Lay, §1.7); si aparecen variables libres, el
+        sistema posee soluciones no triviales y, por lo tanto, hay
+        dependencia lineal (Grossman, cap. 2).
+        """
+
+        pivot_cols = result.pivot_cols or []
+        free_vars = result.free_vars or []
+        pivot_count = len(pivot_cols)
+        free_count = len(free_vars)
+        num_vars = len(variable_labels)
+
+        # Detalles comunes mostrando la estructura de pivotes/libres.
+        details = [
+            f"Pivotes detectados: {pivot_count} de {num_vars} variables.",
+            f"Variables libres: {free_count}",
+        ]
+
+        status = result.status
+
+        if context == "combination":
+            if is_homogeneous:
+                if status == "UNICA":
+                    return InterpretationVM(
+                        summary=(
+                            "Sistema homogéneo con única solución trivial; "
+                            "las columnas son linealmente independientes (Lay, §1.7)."
+                        ),
+                        details=details,
+                        level="success",
+                    )
+                if status == "INFINITAS":
+                    details.append(
+                        "Existen soluciones no triviales; hay vectores dirección en el núcleo."
+                    )
+                    return InterpretationVM(
+                        summary=(
+                            "Sistema homogéneo con soluciones no triviales; "
+                            "los vectores generan dependencias lineales (Grossman, cap. 2)."
+                        ),
+                        details=details,
+                        level="warning",
+                    )
+                return InterpretationVM(
+                    summary=(
+                        "Se detectó inconsistencia inesperada en un sistema homogéneo; "
+                        "verifica los datos de entrada."
+                    ),
+                    details=details,
+                    level="error",
+                )
+
+            # Caso no homogéneo: análisis de pertenencia de b al subespacio.
+            if status == "UNICA":
+                details.append("No hay variables libres; el rango coincide con el número de incógnitas.")
+                return InterpretationVM(
+                    summary=(
+                        "El sistema es consistente con solución única; b pertenece al subespacio "
+                        "generado por las columnas de A (Lay, §1.5)."
+                    ),
+                    details=details,
+                    level="success",
+                )
+            if status == "INFINITAS":
+                details.append(
+                    "La presencia de variables libres indica una familia infinita de coeficientes."
+                )
+                return InterpretationVM(
+                    summary=(
+                        "El sistema es consistente con infinitas soluciones; existe dependencia "
+                        "lineal entre los vectores generadores."
+                    ),
+                    details=details,
+                    level="warning",
+                )
+            return InterpretationVM(
+                summary=(
+                    "Sistema inconsistente; b no pertenece al subespacio generado por las columnas "
+                    "de A (Lay, §1.3)."
+                ),
+                details=details,
+                level="error",
+            )
+
+        if context == "dependence":
+            if status == "UNICA":
+                details.append("El núcleo contiene solo la solución nula.")
+                return InterpretationVM(
+                    summary=(
+                        "Los vectores introducidos son linealmente independientes; la única "
+                        "solución a A·c = 0 es c = 0 (Lay, §1.7)."
+                    ),
+                    details=details,
+                    level="success",
+                )
+            if status == "INFINITAS":
+                details.append("El núcleo tiene dimensión positiva; hay relaciones lineales no triviales.")
+                return InterpretationVM(
+                    summary=(
+                        "Los vectores son linealmente dependientes; existen soluciones no triviales "
+                        "para A·c = 0 (Grossman, cap. 2)."
+                    ),
+                    details=details,
+                    level="warning",
+                )
+            return InterpretationVM(
+                summary=(
+                    "El solucionador reportó inconsistencia; revisa la construcción del sistema."
+                ),
+                details=details,
+                level="error",
+            )
+
+        # Contexto genérico: devolver una descripción básica.
+        generic = {
+            "UNICA": (
+                "success",
+                "Sistema consistente con solución única.",
+            ),
+            "INFINITAS": (
+                "warning",
+                "Sistema consistente con infinitas soluciones.",
+            ),
+            "INCONSISTENTE": (
+                "error",
+                "Sistema inconsistente; no existe solución.",
+            ),
+        }
+        level, summary = generic.get(status, ("info", f"Estado: {status}"))
+        return InterpretationVM(summary=summary, details=details, level=level)

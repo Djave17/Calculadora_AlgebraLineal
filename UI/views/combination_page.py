@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from ViewModels.combinacion_lineal_vm import CombinacionLinealViewModel, CombinationResultVM
 
 from . import dialogs, helpers
+from .components import AlertBanner
 
 
 @dataclass
@@ -121,6 +122,9 @@ class CombinationPage(QWidget):
         button_row.addStretch(1)
         layout.addLayout(button_row)
 
+        self.alert_banner = AlertBanner()
+        layout.addWidget(self.alert_banner)
+
         self.combo_result_output = QTextEdit()
         self.combo_result_output.setReadOnly(True)
         self.combo_result_output.setMinimumHeight(260)
@@ -167,7 +171,19 @@ class CombinationPage(QWidget):
             lines.append("Matriz aumentada [A|b]:")
             lines.extend(helpers.matrix_lines(resultado.augmented_matrix, indent="  "))
             lines.append("")
-            lines.extend(helpers.format_result_lines(resultado.solver_result, resultado.coefficient_labels))
+
+            interpretacion = resultado.interpretation
+            lines.append(f"Interpretación: {interpretacion.summary}")
+            for detail in interpretacion.details:
+                lines.append(f"  - {detail}")
+            lines.append("")
+
+            lines.extend(
+                helpers.format_result_lines(
+                    resultado.solver_result,
+                    resultado.coefficient_labels,
+                )
+            )
 
             solucion = resultado.solver_result.solution
             if solucion is not None:
@@ -184,7 +200,12 @@ class CombinationPage(QWidget):
 
             self.combo_result_output.setPlainText("\n".join(lines))
             self.combo_steps_button.setEnabled(bool(resultado.solver_result.steps))
+            self.alert_banner.show_message(
+                interpretacion.summary,
+                level=interpretacion.level,
+            )
         except Exception as exc:
+            self.alert_banner.show_message(str(exc), level="error")
             QMessageBox.critical(self, "Error", str(exc))
 
     def _on_clear(self) -> None:
@@ -193,6 +214,7 @@ class CombinationPage(QWidget):
         self.combo_result_output.clear()
         self.combo_steps_button.setEnabled(False)
         self._last_result = None
+        self.alert_banner.clear()
 
     def _on_show_steps(self) -> None:
         if not self._last_result:

@@ -9,6 +9,7 @@ from typing import List
 from ViewModels.resolucion_matriz_vm import (
     MatrixCalculatorViewModel,
     ResultVM,
+    InterpretationVM,
 )
 
 
@@ -19,6 +20,8 @@ class CombinationResultVM:
     coefficient_labels: List[str]
     solver_result: ResultVM
     augmented_matrix: List[List[Fraction]]
+    interpretation: InterpretationVM
+    is_homogeneous: bool
 
 
 class CombinacionLinealViewModel:
@@ -55,8 +58,17 @@ class CombinacionLinealViewModel:
         resultado = self._calculator.solve(matriz_aumentada)
 
         etiquetas = [f"c{i + 1}" for i in range(len(generadores))]
+        es_homogeneo = all(value == 0 for value in objetivo)
+        interpretacion = MatrixCalculatorViewModel.interpret_result(
+            resultado,
+            context="combination",
+            is_homogeneous=es_homogeneo,
+            variable_labels=etiquetas,
+        )
         return CombinationResultVM(
             coefficient_labels=etiquetas,
             solver_result=resultado,
             augmented_matrix=matriz_aumentada,
+            interpretation=interpretacion,
+            is_homogeneous=es_homogeneo,
         )

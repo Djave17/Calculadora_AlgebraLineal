@@ -35,10 +35,14 @@ class VectorPropiedadesViewModel:
         """
 
         if text is None:
-            raise ValueError("Entrada vacía para vector.")
+            raise ValueError(
+                "Debes proporcionar componentes para el vector conforme a la definición de ℝⁿ (Lay, §1.2)."
+            )
         s = text.strip()
         if s == "":
-            raise ValueError("Entrada vacía para vector.")
+            raise ValueError(
+                "Debes proporcionar componentes para el vector conforme a la definición de ℝⁿ (Lay, §1.2)."
+            )
         s = s.replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
         tokens = re.split(r"[\s,]+", s.strip())
         valores: List[Fraction] = []
@@ -48,9 +52,14 @@ class VectorPropiedadesViewModel:
             try:
                 valores.append(Fraction(token))
             except ValueError as exc:
-                raise ValueError(f"Valor no numérico en vector: '{token}'") from exc
+                raise ValueError(
+                    f"El valor '{token}' no puede convertirse en fracción racional; "
+                    "recuerda que en ℝ cada componente debe ser un número real (Grossman, cap. 1)."
+                ) from exc
         if not valores:
-            raise ValueError("No se detectaron números en el vector.")
+            raise ValueError(
+                "No se detectaron componentes numéricas; revisa el formato propuesto en clase."
+            )
         return valores
 
     def parse_scalar(self, text: str) -> Fraction:
@@ -64,13 +73,17 @@ class VectorPropiedadesViewModel:
         try:
             return Fraction(normalized)
         except ValueError as exc:
-            raise ValueError(f"Valor no numérico para α: '{text}'") from exc
+            raise ValueError(
+                f"El valor '{text}' no es un número racional válido para α; "
+                "recuerda que la multiplicación por escalar requiere un elemento del cuerpo (Lay, §1.1)."
+            ) from exc
 
     def _check_same_dim(self, *vecs: List[Fraction]) -> None:
         dims = [len(v) for v in vecs]
         if len(set(dims)) != 1:
             raise ValueError(
-                "Los vectores deben tener la misma dimensión. Dimensiones detectadas: "
+                "Todos los vectores deben compartir dimensión para operar en ℝⁿ "
+                "(Lay, §1.2). Dimensiones detectadas: "
                 f"{dims}"
             )
 
@@ -162,4 +175,3 @@ class VectorPropiedadesViewModel:
         resultados.append(("Existencia de vector opuesto", ok, pasos))
 
         return resultados
-
