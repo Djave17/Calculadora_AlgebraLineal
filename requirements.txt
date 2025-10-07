@@ -1,4 +1,3 @@
-
-PySide6
+flet>=0.7.4
 Flask
 python-dotenv

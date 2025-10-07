@@ -14,7 +14,7 @@ El diseño sigue el patrón MVVM (Model-View-ViewModel):
   encargadas de la lógica matemática.
 - **ViewModel**: Este módulo. Orquesta las llamadas al solucionador,
   conserva las dimensiones y expone los datos listos para la vista.
-- **Vista**: Implementada en `UI/main.py` con PySide6. Responde a la
+- **Vista**: Implementada en `UI/main.py` con Flet. Responde a la
   interacción del usuario (tabla, botones) consultando este ViewModel.
 
 Todos los datos numéricos se representan con `Fraction` para preservar
@@ -197,7 +197,7 @@ class MatrixCalculatorViewModel:
 
     @rows.setter
     def rows(self, value: int) -> None:
-        self._rows = max(1, value)
+        self._rows = max(1, min(8, value))
 
     # Accesores y mutadores para la cantidad de variables (columnas)
     @property
@@ -206,7 +206,7 @@ class MatrixCalculatorViewModel:
 
     @cols.setter
     def cols(self, value: int) -> None:
-        self._cols = max(1, value)
+        self._cols = max(1, min(12, value))
 
     @property
     def method(self) -> str:
