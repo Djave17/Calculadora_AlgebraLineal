@@ -52,6 +52,7 @@ def format_result_lines(
     result: ResultVM,
     variable_labels: Sequence[str],
     indent: str = "",
+    homogeneous: bool = False,
 ) -> List[str]:
     """Genera un resumen textual en varias líneas del resultado obtenido."""
 
@@ -77,6 +78,10 @@ def format_result_lines(
     libre_labels = ", ".join(variable_labels[idx] for idx in (result.free_vars or [])) or "—"
     lines.append(f"{indent}Columnas pivote: {pivote_labels}")
     lines.append(f"{indent}Variables libres: {libre_labels}")
+
+    if homogeneous:
+        lines.append(_homogeneous_solution_statement(result, indent))
+
     return lines
 
 
@@ -173,3 +178,30 @@ def format_vector(values: Iterable[Fraction | float]) -> str:
     """Devuelve una representación tipo tupla ``(v1, v2, ...)``."""
 
     return "(" + ", ".join(str(x) for x in values) + ")"
+
+
+def _homogeneous_solution_statement(result: ResultVM, indent: str) -> str:
+    """Redacta si la soluci?n trivial es ?nica en sistemas homog?neos."""
+    status = result.status
+
+    if status == "INCONSISTENTE":
+        return f"{indent}Ni siquiera la soluci?n trivial satisface el sistema (inconsistente)."
+
+    if status == "UNICA":
+        if result.solution is None:
+            return f"{indent}La soluci?n trivial es la ?nica."
+        if all(value == 0 for value in result.solution):
+            return f"{indent}La soluci?n trivial es la ?nica."
+        return f"{indent}La soluci?n trivial no es la ?nica."
+
+    if status == "INFINITAS":
+        return f"{indent}Existen soluciones no triviales; la soluci?n trivial no es la ?nica."
+
+    if result.free_vars:
+        return f"{indent}Existen soluciones no triviales; la soluci?n trivial no es la ?nica."
+
+    parametric = result.parametric
+    if parametric and (parametric.direcciones or parametric.free_vars):
+        return f"{indent}Existen soluciones no triviales; la soluci?n trivial no es la ?nica."
+
+    return f"{indent}La soluci?n trivial no es la ?nica."

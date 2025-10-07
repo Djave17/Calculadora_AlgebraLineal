@@ -202,12 +202,19 @@ class MatrixEquationPage(QWidget):
         lines.append("Matriz B ingresada:")
         lines.extend(helpers.matrix_lines(B_rows, indent="  "))
         lines.append("")
+        is_homogeneous = all(all(value == 0 for value in row) for row in B_rows)
+        lines.append("AX = 0 (sistema homogéneo)" if is_homogeneous else "AX = b (sistema no homogéneo)")
+        is_consistent = resultado.status in ("UNICA", "INFINITAS")
+        lines.append("Sistema consistente." if is_consistent else "Sistema inconsistente.")
+        summary_line = self._summarize_trivial_solution(resultado, is_homogeneous)
+        if summary_line:
+            lines.append(summary_line)
         lines.append(f"Estado global: {helpers.status_to_text(resultado.status)}")
         lines.append("")
 
         for column in resultado.columns:
             lines.append(f"Columna {column.label}: {helpers.status_to_text(column.result.status)}")
-            lines.extend(helpers.format_result_lines(column.result, var_labels, indent="  "))
+            lines.extend(helpers.format_result_lines(column.result, var_labels, indent="  ", homogeneous=is_homogeneous))
             lines.extend(helpers.format_steps_lines(column.result, indent="  "))
             lines.append("")
 
@@ -236,6 +243,34 @@ class MatrixEquationPage(QWidget):
         self.steps_button.setEnabled(has_steps)
         if has_steps:
             self.steps_selector.setCurrentIndex(0)
+
+    @staticmethod
+    def _summarize_trivial_solution(result: MatrixEquationResultVM, is_homogeneous: bool) -> str:
+        if not is_homogeneous:
+            return ""
+
+        status = result.status
+        if status == "INCONSISTENTE":
+            return "No existe solución; ni siquiera la trivial satisface las ecuaciones."
+
+        has_free_vars = any(bool(column.result.free_vars) for column in result.columns)
+        if status == "INFINITAS" or has_free_vars:
+            return "Existen soluciones no triviales (hay al menos una variable libre)."
+
+        if status == "UNICA" and MatrixEquationPage._all_solutions_zero(result):
+            return "La solución trivial es la única."
+
+        return "La solución trivial no es la única."
+
+    @staticmethod
+    def _all_solutions_zero(result: MatrixEquationResultVM) -> bool:
+        for column in result.columns:
+            solution = column.result.solution
+            if not solution:
+                return False
+            if any(value != 0 for value in solution):
+                return False
+        return True
 
     def _on_show_steps(self) -> None:
         if not self._last_result:

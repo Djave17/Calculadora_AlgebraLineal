@@ -142,19 +142,52 @@ class VectorDependencePage(QWidget):
             QMessageBox.critical(self, "Error", str(exc))
             return
 
+        combination_terms = [
+            f"{coef}{helpers.format_vector(vector)}"
+            for coef, vector in zip(resultado.coefficient_labels, generadores)
+        ]
+        combination_expr = " + ".join(combination_terms)
+        zero_vector = helpers.format_vector([0] * len(generadores[0]))
+        status = resultado.solver_result.status
+        has_unique_solution = status == "UNICA"
+        are_dependent = status == "INFINITAS"
+        solution_values = resultado.solver_result.solution
+        trivial_only = (
+            has_unique_solution
+            and solution_values is not None
+            and all(value == 0 for value in solution_values)
+        )
+
         lines: List[str] = []
         lines.append("Matriz aumentada [A|0]:")
         lines.extend(helpers.matrix_lines(resultado.augmented_matrix, indent="  "))
         lines.append("")
-        lines.append(f"Interpretación: {resultado.interpretation.summary}")
-        for detail in resultado.interpretation.details:
-            lines.append(f"  - {detail}")
+        lines.append(f"Planteamiento: {combination_expr} = b, con b = {zero_vector}.")
+        consistency_line = (
+            "El sistema es consistente con una solución única."
+            if has_unique_solution
+            else "El sistema no es consistente con una solución única."
+        )
+        dependence_line = (
+            "Los vectores ingresados son linealmente dependientes."
+            if are_dependent
+            else "Los vectores ingresados son linealmente independientes."
+        )
+        trivial_line = (
+            "El sistema homogéneo solo tiene la solución trivial."
+            if trivial_only
+            else "El sistema homogéneo admite soluciones no triviales."
+        )
+        lines.append(f"• {consistency_line}")
+        lines.append(f"• {dependence_line}")
+        lines.append(f"• {trivial_line}")
         lines.append("")
         lines.extend(
             helpers.format_result_lines(
                 resultado.solver_result,
                 resultado.coefficient_labels,
                 indent="",
+                homogeneous=True,
             )
         )
         lines.append("")

@@ -396,7 +396,7 @@ class MatrixCalculatorViewModel:
         homogéneo solo tiene la solución trivial, los vectores columna
         son independientes (Lay, §1.7); si aparecen variables libres, el
         sistema posee soluciones no triviales y, por lo tanto, hay
-        dependencia lineal (Grossman, cap. 2).
+        dependencia lineal.
         """
 
         pivot_cols = result.pivot_cols or []
@@ -407,7 +407,7 @@ class MatrixCalculatorViewModel:
 
         # Detalles comunes mostrando la estructura de pivotes/libres.
         details = [
-            f"Pivotes detectados: {pivot_count} de {num_vars} variables.",
+            f"Pivotes existentes: {pivot_count} de {num_vars} variables.",
             f"Variables libres: {free_count}",
         ]
 
@@ -431,7 +431,7 @@ class MatrixCalculatorViewModel:
                     return InterpretationVM(
                         summary=(
                             "Sistema homogéneo con soluciones no triviales; "
-                            "los vectores generan dependencias lineales (Grossman, cap. 2)."
+                            "los vectores generan dependencias lineales."
                         ),
                         details=details,
                         level="warning",
@@ -489,11 +489,10 @@ class MatrixCalculatorViewModel:
                     level="success",
                 )
             if status == "INFINITAS":
-                details.append("El núcleo tiene dimensión positiva; hay relaciones lineales no triviales.")
                 return InterpretationVM(
                     summary=(
                         "Los vectores son linealmente dependientes; existen soluciones no triviales "
-                        "para A·c = 0 (Grossman, cap. 2)."
+                        "para A·c = 0."
                     ),
                     details=details,
                     level="warning",

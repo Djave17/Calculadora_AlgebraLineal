@@ -182,6 +182,7 @@ class CombinationPage(QWidget):
                 helpers.format_result_lines(
                     resultado.solver_result,
                     resultado.coefficient_labels,
+                    homogeneous=resultado.is_homogeneous,
                 )
             )
 
