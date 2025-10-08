@@ -9,6 +9,8 @@ operaciones elementales de fila (intercambio, escalar, suma de filas) necesarias
 # algebra_lineal/Models/matriz.py
 from __future__ import annotations
 from typing import List, Sequence, Tuple
+from fractions import Fraction
+
 from Models.Errores.manejador_errores import ManejadorErrores as ME
 
 
@@ -22,7 +24,9 @@ class Matriz:
             if len(fila) != n_cols:
                 raise ValueError("Todas las filas deben tener la misma cantidad de columnas.")
         # Copia profunda para evitar aliasing externo
-        self._datos: List[List[float]] = [list(f) for f in datos]
+        self._datos: List[List[Fraction]] = [
+            [Fraction(x) for x in fila] for fila in datos
+        ]
         self._filas: int = len(self._datos)
         self._cols: int = n_cols
 
@@ -47,16 +51,16 @@ class Matriz:
         if not (0 <= j < self._cols):
             raise IndexError(f"Índice de columna fuera de rango: {j}")
 
-    def obtener(self, i: int, j: int) -> float:
+    def obtener(self, i: int, j: int) -> Fraction:
         ME.validar_indices(i, j, self._filas, self._cols)
         return self._datos[i][j]
 
-    def poner(self, i: int, j: int, valor: float) -> None:
+    def poner(self, i: int, j: int, valor) -> None:
         ME.validar_indices(i, j, self._filas, self._cols)
-        self._datos[i][j] = valor
+        self._datos[i][j] = Fraction(valor)
 
     # Acceso por fila completa (copia para preservar encapsulamiento)
-    def obtener_fila(self, i: int) -> List[float]:
+    def obtener_fila(self, i: int) -> List[Fraction]:
         ME.validar_indice_fila(i, self._filas)
         return list(self._datos[i])
 
@@ -64,14 +68,14 @@ class Matriz:
         ME.validar_indice_fila(i, self._filas)
         if len(nueva_fila) != self._cols:
             raise ValueError("Longitud de fila incompatible con la matriz.")
-        self._datos[i] = list(nueva_fila)
+        self._datos[i] = [Fraction(x) for x in nueva_fila]
 
     # -------------------- Copias / Representación --------------------
     def clonar(self) -> "Matriz":
         # Retorna una copia de la matriz mediante la creación de una nueva instancia de Matriz
         return Matriz([fila[:] for fila in self._datos])
 
-    def como_lista(self) -> List[List[float]]:
+    def como_lista(self) -> List[List[Fraction]]:
         # Retorna una representación de la matriz como una lista de listas.
         return [fila[:] for fila in self._datos]
 
@@ -83,5 +87,8 @@ class Matriz:
     # Representación en cadena
     def __str__(self) -> str:
         # Filas de la matriz
-        filas_str = ["[" + ", ".join(f"{v:.6g}" for v in fila) + "]" for fila in self._datos]
+        filas_str = [
+            "[" + ", ".join(str(v) for v in fila) + "]"
+            for fila in self._datos
+        ]
         return "[" + ",\n ".join(filas_str) + "]"

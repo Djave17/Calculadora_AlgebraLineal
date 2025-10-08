@@ -18,7 +18,7 @@ class SinPivoteo:
         if col >= m.columnas:
             return None
         for i in range(desde_fila, m.filas):
-            if abs(m.obtener(i, col)) > eps:
+            if m.obtener(i, col) != 0:
                 return i
         return None
 
@@ -29,12 +29,13 @@ class PivoteoParcial:
         if col >= m.columnas:
             return None
         mejor_fila = None
-        mejor_val = 0.0
+        mejor_val = 0
         for i in range(desde_fila, m.filas):
-            v = abs(m.obtener(i, col))
+            valor = m.obtener(i, col)
+            v = abs(valor)
             if v > mejor_val:
                 mejor_val = v
                 mejor_fila = i
-        if mejor_fila is None or mejor_val <= eps:
+        if mejor_fila is None or mejor_val == 0:
             return None
         return mejor_fila

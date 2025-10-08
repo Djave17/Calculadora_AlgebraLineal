@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
+from fractions import Fraction
+
 from Operadores.sistema_lineal import SistemaLineal
 from .solucion import Solucion, Parametrica
 from .solucionador import Solucionador
@@ -43,10 +45,10 @@ class SolucionadorGaussJordan(Solucionador):
             # chequea si todas las columnas de variables son ~0
             all_zero = True
             for j in range(n_vars):
-                if abs(R.obtener(i, j)) > self._eps:
+                if R.obtener(i, j) != 0:
                     all_zero = False
                     break
-            if all_zero and abs(R.obtener(i, col_last)) > self._eps:
+            if all_zero and R.obtener(i, col_last) != 0:
                 inconsistent = True
                 break
 
@@ -64,7 +66,7 @@ class SolucionadorGaussJordan(Solucionador):
 
         # Única solución si rank == n_vars
         if rank == n_vars:
-            x = [0.0] * n_vars
+            x = [Fraction(0)] * n_vars
             # En RREF cada pivote está en una fila única; leer b
             for i, pcol in enumerate(pivots):
                 # Ojo: no garantizamos que pivots estén ordenados por fila; reconstruimos por filas
@@ -81,21 +83,21 @@ class SolucionadorGaussJordan(Solucionador):
             )
 
         # Infinitas soluciones: construir forma paramétrica
-        particular = [0.0] * n_vars
+        particular = [Fraction(0)] * n_vars
         # Fijamos todas libres = 0 para la particular
         for pcol in pivots:
             fila = self._fila_pivote(R, pcol)
             particular[pcol] = R.obtener(fila, col_last)
 
-        direcciones: List[List[float]] = []
+        direcciones: List[List[Fraction]] = []
         for f in free_vars:
-            v = [0.0] * n_vars
-            v[f] = 1.0  # parámetro tf
+            v = [Fraction(0)] * n_vars
+            v[f] = Fraction(1)  # parámetro tf
             # Para cada pivote p: x_p = b - sum a_pf * x_f => contribución en dirección = -a_pf
             for pcol in pivots:
                 fila = self._fila_pivote(R, pcol)
                 coef = R.obtener(fila, f)  # a_{p,f} en la ecuación de la fila del pivote p
-                if abs(coef) > self._eps:
+                if coef != 0:
                     v[pcol] = -coef
             direcciones.append(v)
 
@@ -115,11 +117,9 @@ class SolucionadorGaussJordan(Solucionador):
     def _fila_pivote(self, R: 'Matriz', col_pivote: int) -> int:
         for i in range(R.filas):
             val = R.obtener(i, col_pivote)
-            if abs(val - 1.0) <= self._eps:
+            if val == Fraction(1):
                 return i
-        # fallback (no debería ocurrir en RREF)
         for i in range(R.filas):
-            if abs(R.obtener(i, col_pivote)) > self._eps:
+            if R.obtener(i, col_pivote) != 0:
                 return i
         raise RuntimeError("No se encontró fila de pivote para la columna especificada.")
-

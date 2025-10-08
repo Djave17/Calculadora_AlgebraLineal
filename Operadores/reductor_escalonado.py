@@ -72,7 +72,7 @@ class ReductorEscalonado:
             # Debajo
             for i in range(r + 1, m.filas):
                 val = m.obtener(i, c)
-                if abs(val) > self._eps:
+                if val != 0:
                     antes = m.como_lista() if registrador else None
                     op.combinar(i, r, -val)  # Ri <- Ri - val * Rr
                     if registrador:
@@ -82,12 +82,12 @@ class ReductorEscalonado:
                             filas_afectadas=[i],
                             factor=-val,
                             antes=antes, despues=m.como_lista(),
-                            descripcion=f"R{i} <- R{i} - ({val:.6g}) * R{r}"
+                            descripcion=f"R{i} <- R{i} - ({val}) * R{r}"
                         )
             # Encima
             for i in range(0, r):
                 val = m.obtener(i, c)
-                if abs(val) > self._eps:
+                if val != 0:
                     antes = m.como_lista() if registrador else None
                     op.combinar(i, r, -val)  # Ri <- Ri - val * Rr
                     if registrador:
@@ -97,7 +97,7 @@ class ReductorEscalonado:
                             filas_afectadas=[i],
                             factor=-val,
                             antes=antes, despues=m.como_lista(),
-                            descripcion=f"R{i} <- R{i} - ({val:.6g}) * R{r}"
+                            descripcion=f"R{i} <- R{i} - ({val}) * R{r}"
                         )
 
             columnas_pivote.append(c)

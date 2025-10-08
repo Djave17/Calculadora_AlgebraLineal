@@ -1,170 +1,199 @@
-# cli_consola.py
-# Consola interactiva para resolver A x = b con Gauss-Jordan (sobre [A|b])
-# Enfoque: el usuario SIEMPRE ingresa el sistema. Útil para probar Models (Matriz/Fábrica/Errores).
+"""CLI interactiva para la calculadora de Álgebra Lineal."""
 
 from __future__ import annotations
-from typing import List, Optional
 
-# Imports del proyecto (ejecutar desde la raíz del repo)
-from Models.matriz import Matriz
-from Models.fabrica_matriz import FabricaMatriz  # por si quieres generar identidad/ceros en la sesión
-from Models.Errores.errores import  ErrorAlgebraLineal
-from Operadores.sistema_lineal import SistemaLineal
-from Operadores.SolucionGaussJordan.solucion_gauss_jordan import SolucionadorGaussJordan
-from Operadores.estrategia_pivoteo import PivoteoParcial
+from fractions import Fraction
+from typing import List
+
+from Models.Errores.errores import ErrorAlgebraLineal
+from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
+
+SALIR = {"q", "salir", "exit"}
 
 
-# ----------------------- Helpers de entrada -----------------------
-
-def pedir_entero(msg: str, minimo: int = 1) -> int:
+def pedir_entero(mensaje: str, minimo: int = 1) -> int:
     while True:
-        s = input(msg).strip()
-        if s.lower() in {"q", "salir"}:
+        valor = input(mensaje).strip().lower()
+        if valor in SALIR:
             raise KeyboardInterrupt
         try:
-            v = int(s)
-            if v < minimo:
-                print(f"  • Debe ser un entero >= {minimo}.")
+            numero = int(valor)
+            if numero < minimo:
+                print(f"  • Debe ser un entero mayor o igual que {minimo}.")
                 continue
-            return v
+            return numero
         except ValueError:
-            print("  • Ingresa un número entero válido (o 'q' para salir).")
+            print("  • Entrada inválida. Introduce un entero.")
 
-def parsear_fila(msg: str, n: int) -> List[float]:
+
+def pedir_vector_etiqueta(etiqueta: str) -> str:
+    valor = input(f"  {etiqueta}: ").strip()
+    if valor.lower() in SALIR:
+        raise KeyboardInterrupt
+    if not valor:
+        raise ValueError("El vector no puede estar vacío.")
+    return valor
+
+
+def pedir_vectores(numero: int) -> str:
+    vectores = []
+    for idx in range(1, numero + 1):
+        texto = pedir_vector_etiqueta(f"Vector v{idx}")
+        vectores.append(texto)
+    return ";".join(vectores)
+
+
+def pedir_fila(n: int, etiqueta: str) -> List[Fraction]:
     while True:
-        s = input(msg).strip()
-        if s.lower() in {"q", "salir"}:
+        texto = input(f"  {etiqueta}: ").strip()
+        if texto.lower() in SALIR:
             raise KeyboardInterrupt
-        # admite espacios y/o comas
-        s = s.replace(",", " ")
-        partes = [p for p in s.split() if p]
-        if len(partes) != n:
-            print(f"  • Debes ingresar exactamente {n} números.")
+        tokens = [tok for tok in texto.replace(",", " ").split() if tok]
+        if len(tokens) != n:
+            print(f"  • Debes proporcionar exactamente {n} números.")
             continue
         try:
-            return [float(p) for p in partes]
+            return [Fraction(tok) for tok in tokens]
         except ValueError:
-            print("  • Hay valores no numéricos. Intenta de nuevo.")
+            print("  • Se detectó un valor inválido. Intenta de nuevo.")
 
-def pedir_si_no(msg: str, por_defecto: bool = False) -> bool:
-    suf = " [S/n]" if por_defecto else " [s/N]"
-    while True:
-        s = input(msg + suf + ": ").strip().lower()
-        if s in {"", "s", "si", "sí"}:
-            return True if s != "" else por_defecto
-        if s in {"n", "no"}:
-            return False
-        print("  • Responde 's' o 'n' (o Enter para el valor por defecto).")
 
-def pedir_nombres_variables(n: int) -> Optional[List[str]]:
-    if not pedir_si_no("¿Quieres nombrar las variables (x1..xn por defecto)?", por_defecto=False):
-        return [f"x{i+1}" for i in range(n)]
-    nombres: List[str] = []
-    print("Introduce los nombres (un solo token por nombre, p. ej. x, y, z):")
-    for j in range(n):
+def mostrar_lista(lineas: List[str], sangria: str = "  ") -> None:
+    for linea in lineas:
+        print(f"{sangria}{linea}")
+
+
+def opcion_propiedades(vm: LinearAlgebraViewModel) -> None:
+    print("\n--- Propiedades en ℝⁿ ---")
+    try:
+        u = pedir_vector_etiqueta("Vector u")
+        v = pedir_vector_etiqueta("Vector v")
+        w = input("  Vector w (opcional, Enter para utilizar (1,...,1)): ").strip()
+        alpha = input("  Escalar α (opcional): ").strip()
+        resultado = vm.propiedades_Rn({"u": u, "v": v, "w": w, "alpha": alpha})
+        print("\nResultado de u + v:")
+        mostrar_lista(resultado["suma"]["pasos"])
+        print(f"  Resultado final: {resultado['suma']['resultado']}")
+        if resultado.get("producto_escalar"):
+            print("\nMultiplicación por escalar:")
+            mostrar_lista(resultado["producto_escalar"]["pasos"])
+        print("\nVerificación de propiedades:")
+        for prop in resultado["propiedades"]:
+            estado = "Cumple" if prop["cumple"] else "No cumple"
+            print(f"  - {prop['propiedad']}: {estado}")
+            mostrar_lista(prop["pasos"], sangria="    ")
+    except Exception as exc:
+        print(f"  [Error] {exc}")
+
+
+def opcion_combinacion(vm: LinearAlgebraViewModel) -> None:
+    print("\n--- Combinación lineal ---")
+    try:
+        cantidad = pedir_entero("Número de vectores generadores: ", minimo=1)
+        vectores_texto = pedir_vectores(cantidad)
+        objetivo = pedir_vector_etiqueta("Vector objetivo b")
+        resultado = vm.combinacion_lineal({"vectores": vectores_texto, "objetivo": objetivo})
+        imprimir_solucion_lineal(resultado)
+    except Exception as exc:
+        print(f"  [Error] {exc}")
+
+
+def opcion_vectorial(vm: LinearAlgebraViewModel) -> None:
+    print("\n--- Ecuación vectorial ---")
+    try:
+        cantidad = pedir_entero("Número de vectores vᵢ: ", minimo=1)
+        vectores_texto = pedir_vectores(cantidad)
+        objetivo = pedir_vector_etiqueta("Vector b")
+        resultado = vm.ecuacion_vectorial({"vectores": vectores_texto, "objetivo": objetivo})
+        imprimir_solucion_lineal(resultado)
+    except Exception as exc:
+        print(f"  [Error] {exc}")
+
+
+def opcion_matricial(vm: LinearAlgebraViewModel) -> None:
+    print("\n--- Ecuación matricial AX = B ---")
+    try:
+        filas = pedir_entero("Número de filas de A: ", minimo=1)
+        columnas = pedir_entero("Número de columnas de A: ", minimo=1)
+        filas_b = pedir_entero("Número de filas de B: ", minimo=1)
+        columnas_b = pedir_entero("Número de columnas de B: ", minimo=1)
+
+        print("Ingresa la matriz A (componentes separados por espacio o coma):")
+        A_rows = [pedir_fila(columnas, f"Fila {i+1}") for i in range(filas)]
+
+        print("Ingresa la matriz B:")
+        B_rows = [pedir_fila(columnas_b, f"Fila {i+1}") for i in range(filas_b)]
+
+        if len(A_rows) != len(B_rows):
+            print("  [Error] La matriz B debe tener la misma cantidad de filas que A.")
+            return
+
+        resultado = vm.ecuacion_matricial({"A": A_rows, "B": B_rows})
+        print(f"\nEstado global: {resultado['estado']}")
+        for columna in resultado["columnas"]:
+            print(f"\n>>> Columna b{columna['columna'] + 1}")
+            imprimir_solucion_lineal(columna)
+    except Exception as exc:
+        print(f"  [Error] {exc}")
+
+
+def imprimir_solucion_lineal(resultado: dict) -> None:
+    print(f"  Estado: {resultado['estado']}")
+    print("  Matriz aumentada [A|b]:")
+    mostrar_lista(resultado["matriz_aumentada"], sangria="    ")
+    if "solucion" in resultado:
+        print(f"  Solución única: {resultado['solucion']}")
+    if "solucion_particular" in resultado:
+        print(f"  Solución particular: {resultado['solucion_particular']}")
+    if "direcciones" in resultado:
+        print("  Direcciones del núcleo:")
+        for direccion in resultado["direcciones"]:
+            print(f"    {direccion}")
+    if "nucleo" in resultado and resultado["nucleo"]:
+        print("  Núcleo calculado a partir de la RREF:")
+        for vector in resultado["nucleo"]:
+            print(f"    {vector}")
+    if "mensaje" in resultado:
+        print(f"  {resultado['mensaje']}")
+    if resultado.get("pasos"):
+        print("  Pasos Gauss-Jordan:")
+        mostrar_lista(resultado["pasos"], sangria="    ")
+
+
+def main() -> None:
+    vm = LinearAlgebraViewModel()
+    print("=== Calculadora de Álgebra Lineal ===")
+    print("(Escribe 'q' para salir en cualquier momento)\n")
+
+    menu = {
+        "1": ("Propiedades en ℝⁿ", opcion_propiedades),
+        "2": ("Combinación lineal", opcion_combinacion),
+        "3": ("Ecuación vectorial", opcion_vectorial),
+        "4": ("Ecuación matricial AX = B", opcion_matricial),
+    }
+
+    try:
         while True:
-            nom = input(f"  Nombre de la variable {j+1}: ").strip()
-            if not nom:
-                print("    • El nombre no puede estar vacío.")
-                continue
-            if any(c.isspace() for c in nom):
-                print("    • Evita espacios en el nombre.")
-                continue
-            nombres.append(nom)
-            break
-    return nombres
+            print("Menú principal:")
+            for clave, (descripcion, _) in menu.items():
+                print(f"  {clave}. {descripcion}")
+            print("  0. Salir")
 
-
-# ----------------------- I/O de solución -----------------------
-
-def mostrar_solucion(nombres: List[str], solucion, mostrar_pasos: bool) -> None:
-    print("\n=== Resultado ===")
-    print(f"Estado: {solucion.estado}")
-
-    if solucion.estado == "UNICA":
-        xs = solucion.x or []
-        for nom, val in zip(nombres, xs):
-            print(f"  {nom} = {val:.6g}")
-
-    elif solucion.estado == "INFINITAS":
-        print(f"Columnas pivote: {solucion.columnas_pivote}")
-        print(f"Variables libres: {solucion.variables_libres}")
-        p = solucion.parametrica
-        if p:
-            print("Solución particular:")
-            for nom, val in zip(nombres, p.particular):
-                print(f"  {nom} = {val:.6g}")
-            print("Direcciones (una por variable libre, con parámetros t1, t2, ...):")
-            for k, dirv in enumerate(p.direcciones, start=1):
-                term = " + ".join(
-                    f"{coef:.6g}·{nom}"
-                    for nom, coef in zip(nombres, dirv) if abs(coef) > 1e-12
-                ) or "0"
-                print(f"  t{k}: {term}")
-
-    else:  # INCONSISTENTE
-        print("No existe solución (aparece una fila [0 ... 0 | c] con c ≠ 0 en RREF).")
-
-    if mostrar_pasos and solucion.historial:
-        print("\n-- Pasos Gauss-Jordan --")
-        for paso in solucion.historial.pasos:
-            print(f"[{paso.numero:03d}] {paso.operacion:>18} | pivote=({paso.pivote_fila},{paso.pivote_col}) "
-                  f"| factor={'' if paso.factor is None else f'{paso.factor:.6g}'} "
-                  f"| filas={paso.filas_afectadas} | {paso.descripcion}")
-
-
-# ----------------------- Bucle principal -----------------------
-
-def main():
-    print("=== Calculadora de Sistemas Lineales (Gauss-Jordan) ===")
-    print("   Ingresa 'q' en cualquier momento para salir.\n")
-
-    while True:
-        try:
-            m = pedir_entero("Número de ecuaciones (m): ", minimo=1)
-            n = pedir_entero("Número de variables (n): ", minimo=1)
-            nombres = pedir_nombres_variables(n)
-
-            print("\nIntroduce la matriz A (m filas, cada una con n números):")
-            A_datos: List[List[float]] = []
-            for i in range(m):
-                A_datos.append(parsear_fila(f"  Fila {i+1} ({n} números): ", n))
-
-            print("\nIntroduce el vector b (m números):")
-            b_datos = parsear_fila("  b: ", m)
-
-            # --- Aquí probamos que funcionen los MODELS ---
-            # Construcción/validación de Matriz
-            A = Matriz(A_datos)
-
-            # Construcción del sistema (A, b)
-            sis = SistemaLineal(A, b_datos, nombres_variables=nombres)
-
-            # Preferencias de ejecución
-            mostrar_pasos = pedir_si_no("¿Deseas registrar y mostrar los pasos de Gauss-Jordan?", por_defecto=False)
-
-            # Resolver (Gauss-Jordan sobre [A|b])
-            solver = SolucionadorGaussJordan(pivoteo=PivoteoParcial())
-            solucion = solver.resolver(sis, registrar_pasos=mostrar_pasos)
-
-            # Mostrar resultado
-            mostrar_solucion(nombres, solucion, mostrar_pasos)
-
-            print("\n--------------------------------------------\n")
-            if not pedir_si_no("¿Resolver otro sistema?", por_defecto=True):
+            eleccion = input("Selecciona una opción: ").strip()
+            if eleccion.lower() in SALIR or eleccion == "0":
+                print("Hasta luego.")
                 break
-
-        except KeyboardInterrupt:
-            print("\nSaliendo...")
-            break
-        except ErrorAlgebraLineal as e:
-            # Cualquier excepción del dominio Models cae aquí (validaciones, índices, etc.)
-            print(f"\n[ERROR de dominio] {e}\n  Vuelve a intentarlo.\n")
-        except Exception as e:
-            print(f"\n[ERROR inesperado] {e}\n")
-            break
+            if eleccion not in menu:
+                print("Opción no válida. Intenta nuevamente.\n")
+                continue
+            _, funcion = menu[eleccion]
+            funcion(vm)
+            print("\n---------------------------------------------\n")
+    except KeyboardInterrupt:
+        print("\nSaliendo...")
+    except ErrorAlgebraLineal as exc:
+        print(f"Error de álgebra lineal: {exc}")
 
 
 if __name__ == "__main__":
     main()
-
