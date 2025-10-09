@@ -12,6 +12,7 @@ from ...helpers import (
     format_result_lines,
     matrix_header_labels,
     parse_matrix,
+    status_to_text,
 )
 from ...methods import MethodInfo
 from ...styles import (
@@ -380,7 +381,12 @@ class MatrixEditor:
         self._last_pivot_cols = []
 
     def show_result(self, result: ResultVM) -> None:
-        base_lines = format_result_lines(result, self._solution_labels())
+        # Para sistemas homogéneos mostramos una forma reducida más clara del núcleo,
+        # evitando listar la "solución particular" nula.
+        if self._force_homogeneous:
+            base_lines = self._format_homogeneous_result(result)
+        else:
+            base_lines = format_result_lines(result, self._solution_labels())
         if self._result_section:
             self._result_section.controls.clear()
             for line in base_lines:
@@ -548,6 +554,41 @@ class MatrixEditor:
         lines = [f"Interpretación: {interpretation.summary}"]
         for detail in interpretation.details:
             lines.append(f"  - {detail}")
+        return lines
+
+    def _format_homogeneous_result(self, result: ResultVM) -> List[str]:
+        """Construye líneas de resultado en forma reducida para A·c = 0.
+
+        - Si la solución es única, se muestra solo la solución trivial.
+        - Si hay infinitas soluciones, se muestra una base del núcleo y la
+          forma general c = t₁·v₁ + … + t_k·v_k.
+        """
+        labels = self._solution_labels()
+        lines: List[str] = [f"Estado: {status_to_text(result.status)}"]
+
+        if result.status == "UNICA":
+            lines.append("Solución (única y trivial):")
+            for lbl in labels:
+                lines.append(f"  {lbl} = 0")
+        elif result.status == "INFINITAS" and result.parametric is not None:
+            # Mostrar base del núcleo
+            lines.append("Base del núcleo (direcciones):")
+            for i, d in enumerate(result.parametric.direcciones or [], start=1):
+                vec = ", ".join(str(x) for x in d)
+                lines.append(f"  v{i} = ({vec})")
+            # Forma general compacta
+            if result.parametric.direcciones:
+                terminos = [f"t{i}·v{i}" for i in range(1, len(result.parametric.direcciones) + 1)]
+                lines.append(f"Solución general: c = {' + '.join(terminos)}")
+        else:
+            # Inconsistencia no debería ocurrir en homogéneo, pero lo indicamos si aparece.
+            lines.append("No se pudo construir una forma reducida para el sistema homogéneo.")
+
+        # Añadir pivotes y variables libres para diagnóstico
+        pivot_labels = ", ".join(labels[i] for i in (result.pivot_cols or [])) or "—"
+        free_labels = ", ".join(labels[i] for i in (result.free_vars or [])) or "—"
+        lines.append(f"Columnas pivote: {pivot_labels}")
+        lines.append(f"Variables libres: {free_labels}")
         return lines
 
     def _apply_method_constraints(self) -> None:

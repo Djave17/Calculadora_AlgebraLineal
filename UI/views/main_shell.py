@@ -226,9 +226,9 @@ class MainShell:
 
     def _ensure_vector_properties_view(self) -> VectorPropertiesView:
         if self._vector_properties_view is None:
-            from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+            from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
 
-            self._vector_properties_view = VectorPropertiesView(self.page, VectorPropiedadesViewModel())
+            self._vector_properties_view = VectorPropertiesView(self.page, LinearAlgebraViewModel())
         return self._vector_properties_view
 
     def _ensure_mer_view(self) -> MerNotesView:
@@ -240,6 +240,7 @@ class MainShell:
         if self._left_menu:
             self._left_menu.set_active_method(method.id)
 
+        # Conmutar entre tipos de vista de forma segura y sin variables no definidas
         if method.view_type == "matrix_solver":
             vm, editor = self._ensure_matrix_editor(method)
             self.view_model = vm
@@ -247,15 +248,17 @@ class MainShell:
             self._matrix_editor = editor
             self._matrix_editor.update_method(method)
             self._matrix_editor.update_method_category(self.active_category.label)
-        if self._center_container:
-            self._center_container.content = editor.view
-            self._safe_update(self._center_container)
+
+            if self._center_container:
+                self._center_container.content = editor.view
+                self._safe_update(self._center_container)
             if self._config_panel:
                 self._config_panel.set_dimensions(vm.rows, vm.cols)
                 self._config_panel.update_method(method)
             if self._config_container:
                 self._config_container.visible = self._config_visible
                 self._safe_update(self._config_container)
+
         elif method.view_type == "matrix_equation":
             view = self._ensure_matrix_equation_view()
             if self._center_container:
@@ -264,6 +267,7 @@ class MainShell:
             if self._config_container:
                 self._config_container.visible = False
                 self._safe_update(self._config_container)
+
         elif method.view_type == "vector_properties":
             view = self._ensure_vector_properties_view()
             if self._center_container:
@@ -272,6 +276,7 @@ class MainShell:
             if self._config_container:
                 self._config_container.visible = False
                 self._safe_update(self._config_container)
+
         elif method.view_type == "mer_notes":
             view = self._ensure_mer_view()
             if self._center_container:
@@ -280,6 +285,7 @@ class MainShell:
             if self._config_container:
                 self._config_container.visible = False
                 self._safe_update(self._config_container)
+
         else:
             if self._center_container:
                 self._center_container.content = None

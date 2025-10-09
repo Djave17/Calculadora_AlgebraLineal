@@ -5,13 +5,13 @@ from typing import Optional
 import flet as ft
 from flet import Colors as colors
 
-from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
+from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
 
 
 class VectorPropertiesView:
     """Permite analizar operaciones básicas en ℝⁿ reutilizando el ViewModel existente."""
 
-    def __init__(self, page: ft.Page, view_model: VectorPropiedadesViewModel) -> None:
+    def __init__(self, page: ft.Page, view_model: LinearAlgebraViewModel) -> None:
         self._page = page
         self._vm = view_model
 
