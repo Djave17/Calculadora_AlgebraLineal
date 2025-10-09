@@ -6,7 +6,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 import flet as ft
 from flet import Icons as icons
 
-from ViewModels.resolucion_matriz_vm import ResultVM, StepVM
+from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, ResultVM, StepVM
 
 from ...helpers import (
     format_result_lines,
@@ -56,6 +56,9 @@ class MatrixEditor:
         self.rows = rows
         self.cols = cols
         self.method = method
+        self._analysis_context = method.analysis_context
+        self._force_homogeneous = method.force_homogeneous
+        self._variable_prefix = method.variable_prefix
         self.category_label = method.category
         self._cells: List[List[ft.TextField]] = []
         self._active_cell: Optional[Tuple[int, int]] = None
@@ -78,6 +81,7 @@ class MatrixEditor:
         self._rebuild_matrix()
         self._update_method_labels()
         self._update_layout_width()
+        self._apply_method_constraints()
 
     # ------------------------------ Construcción ------------------------------
     def _build(self) -> ft.Control:
@@ -126,7 +130,7 @@ class MatrixEditor:
             border=ft.border.all(1, color=PRIMARY_COLOR),
             border_radius=20,
             padding=ft.Padding(20, 24, 20, 24),
-            expand=False,
+            expand=True,
             visible=self.method.available,
             content=ft.Column(spacing=18, expand=True),
         )
@@ -137,7 +141,7 @@ class MatrixEditor:
             border_radius=20,
             padding=ft.Padding(24, 28, 24, 28),
             visible=not self.method.available,
-            expand=False,
+            expand=True,
             content=ft.Column(
                 controls=[
                     ft.Text(
@@ -312,10 +316,14 @@ class MatrixEditor:
         self._rebuild_matrix()
         self._update_dimension_hint()
         self._update_layout_width()
-        self._root.update()
+        self._apply_method_constraints()
+        self._safe_update(self._root)
 
     def update_method(self, method: MethodInfo) -> None:
         self.method = method
+        self._analysis_context = method.analysis_context
+        self._force_homogeneous = method.force_homogeneous
+        self._variable_prefix = method.variable_prefix
         self.category_label = method.category
         self._update_method_labels()
         if self._placeholder_container:
@@ -326,18 +334,24 @@ class MatrixEditor:
             self.clear_results()
         self._rebuild_matrix()
         self._update_layout_width()
-        self._root.update()
+        self._apply_method_constraints()
+        self._safe_update(self._root)
 
     def update_method_category(self, category_label: str) -> None:
         self.category_label = category_label
         self._update_method_labels()
-        self._root.update()
+        self._safe_update(self._root)
 
     def get_augmented_matrix(self) -> List[List[Fraction]]:
         raw_values: List[List[str]] = []
         for row_fields in self._cells:
             raw_values.append([field.value or "0" for field in row_fields])
-        return parse_matrix(raw_values)
+        matrix = parse_matrix(raw_values)
+        if self._force_homogeneous:
+            for row in matrix:
+                if row:
+                    row[-1] = Fraction(0)
+        return matrix
 
     def clear_matrix(self) -> None:
         for row_fields in self._cells:
@@ -345,6 +359,8 @@ class MatrixEditor:
                 field.value = "0"
                 field.update()
         self.clear_results()
+        self._apply_method_constraints()
+        self._apply_method_constraints()
 
     def clear_results(self) -> None:
         if self._result_section:
@@ -405,6 +421,7 @@ class MatrixEditor:
             # No llamar update() aquí; el control puede no estar montado aún.
         self.clear_results()
         self._update_layout_width()
+        self._apply_method_constraints()
 
     def _build_header_row(self) -> ft.Control:
         labels = self._header_labels()
@@ -454,9 +471,6 @@ class MatrixEditor:
                 cursor_color=PRIMARY_COLOR,
                 on_focus=lambda e, r=row_idx, c=col_idx: self._handle_focus(r, c),
             )
-            if self.method.id == "vector_dependence" and col_idx == self.cols:
-                field.read_only = True
-                field.bgcolor = "#f8f1f0"
             row_fields.append(field)
             controls.append(field)
         self._cells.append(row_fields)
@@ -473,7 +487,7 @@ class MatrixEditor:
     def _update_dimension_hint(self) -> None:
         if self._dimension_hint:
             hint_suffix = "(A|b)"
-            if self.method.id == "vector_dependence":
+            if self._force_homogeneous:
                 hint_suffix = "(A|0)"
             self._dimension_hint.value = f"Matriz {self.rows}×{self.cols} {hint_suffix}"
             self._safe_update(self._dimension_hint)
@@ -506,20 +520,16 @@ class MatrixEditor:
             self._safe_update(self._matrix_scroll_row)
 
     def _header_labels(self) -> List[str]:
-        if self.method.id == "linear_combination":
-            labels = [f"c{idx}" for idx in range(1, self.cols + 1)]
-            labels.append("b")
-            return labels
-        if self.method.id == "vector_dependence":
-            labels = [f"c{idx}" for idx in range(1, self.cols + 1)]
-            labels.append("0")
+        if self._analysis_context:
+            prefix = self._variable_prefix or "x"
+            labels = [f"{prefix}{idx}" for idx in range(1, self.cols + 1)]
+            labels.append("0" if self._force_homogeneous else "b")
             return labels
         return matrix_header_labels(self.cols)
 
     def _solution_labels(self) -> List[str]:
-        if self.method.id in {"linear_combination", "vector_dependence"}:
-            return [f"c{idx}" for idx in range(1, self.cols + 1)]
-        return [f"x{idx}" for idx in range(1, self.cols + 1)]
+        prefix = self._variable_prefix or "x"
+        return [f"{prefix}{idx}" for idx in range(1, self.cols + 1)]
 
     def _format_variable_subset(self, indices: Sequence[int]) -> str:
         labels = self._solution_labels()
@@ -527,40 +537,36 @@ class MatrixEditor:
         return ", ".join(selected) if selected else "—"
 
     def _contextual_result_lines(self, result: ResultVM) -> List[str]:
-        if self.method.id == "linear_combination":
-            if result.status == "UNICA":
-                return [
-                    "Interpretación: b es combinación lineal única de los generadores."
-                ]
-            if result.status == "INFINITAS":
-                libres = self._format_variable_subset(result.free_vars or [])
-                return [
-                    f"Interpretación: b admite infinitas combinaciones; variables libres: {libres}."
-                ]
-            if result.status == "INCONSISTENTE":
-                return [
-                    "Interpretación: b no pertenece al subespacio generado por los vectores."
-                ]
-        if self.method.id == "vector_dependence":
-            if result.status == "UNICA":
-                valores = result.solution or []
-                if all(value == 0 for value in valores):
-                    return [
-                        "Interpretación: sólo existe la solución trivial, el conjunto es linealmente independiente."
-                    ]
-                return [
-                    "Interpretación: la solución única no es trivial; verifica la captura de datos."
-                ]
-            if result.status == "INFINITAS":
-                libres = self._format_variable_subset(result.free_vars or [])
-                return [
-                    f"Interpretación: aparecen variables libres ({libres}); los vectores son dependientes."
-                ]
-            if result.status == "INCONSISTENTE":
-                return [
-                    "Interpretación: el sistema homogéneo resultó inconsistente; revisa la captura."
-                ]
-        return []
+        if not self._analysis_context:
+            return []
+        interpretation = MatrixCalculatorViewModel.interpret_result(
+            result,
+            context=self._analysis_context,
+            is_homogeneous=self._force_homogeneous,
+            variable_labels=self._solution_labels(),
+        )
+        lines = [f"Interpretación: {interpretation.summary}"]
+        for detail in interpretation.details:
+            lines.append(f"  - {detail}")
+        return lines
+
+    def _apply_method_constraints(self) -> None:
+        if not self._cells:
+            return
+        last_index = self.cols
+        for row_fields in self._cells:
+            for col_idx, field in enumerate(row_fields):
+                if self._force_homogeneous and col_idx == last_index:
+                    if field.value != "0":
+                        field.value = "0"
+                    field.read_only = True
+                    field.disabled = True
+                    field.bgcolor = "#f8f1f0"
+                else:
+                    field.read_only = False
+                    field.disabled = False
+                    field.bgcolor = "#fff5f4"
+                self._safe_update(field)
 
     # ------------------------------ Utilidad segura ------------------------------
     def _safe_update(self, control: Optional[ft.Control]) -> None:

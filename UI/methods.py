@@ -12,6 +12,13 @@ class MethodInfo:
     available: bool
     description: str
     category: str
+    view_type: str = "matrix_solver"
+    analysis_context: Optional[str] = None
+    force_homogeneous: bool = False
+    variable_prefix: str = "x"
+    shows_config_panel: bool = True
+    default_rows: int = 3
+    default_cols: int = 3
 
 
 @dataclass(frozen=True)
@@ -35,12 +42,25 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 category="Sistemas de ecuaciones",
             ),
             MethodInfo(
+                id="homogeneous",
+                label="Sistema homogéneo",
+                icon="LINEAR_SCALE",
+                available=True,
+                description="Evalúa A·c = 0 para detectar dependencia lineal y soluciones no triviales (Lay §1.7).",
+                category="Sistemas de ecuaciones",
+                analysis_context="dependence",
+                force_homogeneous=True,
+                variable_prefix="c",
+            ),
+            MethodInfo(
                 id="matrix_equation",
                 label="Ecuación AX = B",
                 icon="TABLE_ROWS",
-                available=False,
-                description="Resuelve columnas de B como sistemas independientes. Disponible en la versión PySide por ahora.",
+                available=True,
+                description="Resuelve columnas de B como sistemas independientes aplicando Gauss-Jordan a cada bᵢ.",
                 category="Sistemas de ecuaciones",
+                view_type="matrix_equation",
+                shows_config_panel=False,
             ),
         ),
     ),
@@ -55,6 +75,8 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 available=True,
                 description="Analiza si un vector objetivo b pertenece al span de {v₁,…,vₖ} resolviendo A·c = b (Grossman §2.1).",
                 category="Combinación lineal",
+                analysis_context="combination",
+                variable_prefix="c",
             ),
             MethodInfo(
                 id="vector_dependence",
@@ -63,6 +85,9 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 available=True,
                 description="Determina si sólo existe la solución trivial del sistema homogéneo A·c = 0 para los vectores dados.",
                 category="Dependencia lineal",
+                analysis_context="dependence",
+                force_homogeneous=True,
+                variable_prefix="c",
             ),
         ),
     ),
@@ -74,9 +99,11 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 id="vector_properties",
                 label="Propiedades en ℝⁿ",
                 icon="SCIENCE",
-                available=False,
-                description="Explora suma, multiplicación escalar y verificación de propiedades básicas. Pendiente de portar desde PySide.",
+                available=True,
+                description="Explora suma, multiplicación escalar y verificación de axiomas básicos del espacio vectorial.",
                 category="Operaciones vectoriales",
+                view_type="vector_properties",
+                shows_config_panel=False,
             ),
         ),
     ),
@@ -88,9 +115,11 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 id="mer_notes",
                 label="MER – notas",
                 icon="MENU_BOOK",
-                available=False,
-                description="Resumen del Método de Eliminación por Renglones (MER) y pasos teóricos. Disponible en la versión previa.",
+                available=True,
+                description="Resumen del Método de Eliminación por Renglones y recomendaciones de aplicación práctica.",
                 category="Teoría",
+                view_type="mer_notes",
+                shows_config_panel=False,
             ),
         ),
     ),

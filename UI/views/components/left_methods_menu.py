@@ -8,7 +8,6 @@ from flet import Colors as colors, Icons as icons
 from ...methods import MethodCategory, MethodInfo
 from ...styles import (
     BORDER_COLOR,
-    LEFT_MENU_WIDTH,
     PRIMARY_COLOR,
     SECONDARY_COLOR,
     SURFACE_COLOR,
@@ -34,8 +33,7 @@ class LeftMethodsMenu:
         self._active_method_id = method_id
         for item in self._items:
             item.set_active(item.method.id == method_id)
-        if self._container:
-            self._container.update()
+        self._safe_update(self._container)
 
     def _build(self) -> ft.Control:
         content = ft.Column(
@@ -44,41 +42,18 @@ class LeftMethodsMenu:
             scroll=ft.ScrollMode.AUTO,
         )
 
-        brand = ft.Row(
-            spacing=12,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Container(
-                    width=48,
-                    height=48,
-                    border_radius=14,
-                    bgcolor="#fff0ef",
-                    content=ft.Image(
-                        src="matrix-logo.png",
-                        width=48,
-                        height=48,
-                        fit=ft.ImageFit.CONTAIN,
-                    ),
-                ),
-                ft.Column(
-                    spacing=2,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                    controls=[
-                        ft.Text(
-                            "MATRIX CALC",
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                            color=TEXT_DARK,
-                        ),
-                        ft.Text(
-                            "Desktop Linear Algebra Toolkit",
-                            size=11,
-                            color=TEXT_MUTED,
-                        ),
-                    ],
-                ),
-            ],
+        brand = ft.Container(
+            width=64,
+            height=64,
+            border_radius=18,
+            bgcolor="#fff0ef",
+            alignment=ft.alignment.center,
+            content=ft.Image(
+                src="matrix-logo.png",
+                width=52,
+                height=52,
+                fit=ft.ImageFit.CONTAIN,
+            ),
         )
 
         header = ft.Column(
@@ -97,11 +72,11 @@ class LeftMethodsMenu:
                 ),
             ],
         )
-        content.controls.extend([brand, header])
+        content.controls.extend([ft.Container(content=brand, alignment=ft.alignment.center), header])
 
         self._items.clear()
         for category in self._categories:
-            methods = list(category.methods)
+            methods = [m for m in category.methods if m.available]
             if not methods:
                 continue
             content.controls.append(
@@ -122,10 +97,9 @@ class LeftMethodsMenu:
                 content.controls.append(button.view)
 
         container = ft.Container(
-            width=LEFT_MENU_WIDTH,
             bgcolor=SURFACE_COLOR,
             border=ft.border.only(right=ft.border.BorderSide(width=1, color=BORDER_COLOR)),
-            padding=ft.Padding(24, 24, 24, 24),
+            padding=ft.Padding(18, 20, 24, 24),
             content=content,
         )
         return container
@@ -133,6 +107,13 @@ class LeftMethodsMenu:
     @property
     def view(self) -> ft.Control:
         return self._container
+
+    def _safe_update(self, control: Optional[ft.Control]) -> None:
+        try:
+            if control and control.page:
+                control.update()
+        except AssertionError:
+            pass
 
 
 class MethodButton:
@@ -215,7 +196,9 @@ class MethodButton:
             self._label_control.weight = ft.FontWeight.BOLD if active and self.method.available else ft.FontWeight.W_500
             self._container.bgcolor = PRIMARY_COLOR if active and self.method.available else None
             self._container.border = ft.border.all(1, color=PRIMARY_COLOR if self.method.available else BORDER_COLOR)
-            self._container.update()
+            self._safe_update(self._icon_control)
+            self._safe_update(self._label_control)
+            self._safe_update(self._container)
 
     def _handle_click(self, _event) -> None:
         if not self.method.available:
@@ -226,3 +209,10 @@ class MethodButton:
     @property
     def view(self) -> ft.Control:
         return self._control
+
+    def _safe_update(self, control: Optional[ft.Control]) -> None:
+        try:
+            if control and control.page:
+                control.update()
+        except AssertionError:
+            pass

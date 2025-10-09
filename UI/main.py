@@ -31,12 +31,9 @@ def main(page: ft.Page) -> None:
 
     view_model = MatrixCalculatorViewModel()
     root_container = ft.Container(expand=True)
-    main_shell: MainShell | None = None
+    main_shell = MainShell(page, view_model, METHOD_CATEGORIES)
 
     def show_main_shell() -> None:
-        nonlocal main_shell
-        if main_shell is None:
-            main_shell = MainShell(page, view_model, METHOD_CATEGORIES)
         root_container.content = main_shell.view
         root_container.update()
         page.update()

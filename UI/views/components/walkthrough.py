@@ -32,15 +32,17 @@ class WalkthroughView:
         )
 
         logo = ft.Container(
-            width=80,
-            height=80,
-            border_radius=24,
-            bgcolor="#fff0ef",
+            width=140,
+            height=140,
+            border_radius=32,
+            bgcolor=colors.WHITE,
+            border=ft.border.all(2, color="#f2c9c8"),
+            shadow=ft.BoxShadow(blur_radius=18, color="#22000000", spread_radius=3),
             alignment=ft.alignment.center,
             content=ft.Image(
                 src="matrix-logo.png",
-                width=64,
-                height=64,
+                width=110,
+                height=110,
                 fit=ft.ImageFit.CONTAIN,
             ),
         )
@@ -48,7 +50,7 @@ class WalkthroughView:
         hero = ft.Row(
             spacing=16,
             alignment=ft.MainAxisAlignment.CENTER,
-            controls=[logo, ft.Text("MATRIX CALC", size=40, weight=ft.FontWeight.BOLD, color=TEXT_DARK)],
+            controls=[logo],
         )
 
         description = ft.Text(
