@@ -33,6 +33,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from ViewModels.combinacion_lineal_vm import CombinacionLinealViewModel
+from ViewModels.matrix_operations_vm import MatrixOperationsViewModel
 from ViewModels.matrix_equation_vm import MatrixEquationViewModel
 from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel
 from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
@@ -41,6 +42,7 @@ from ViewModels.vector_dependencia_vm import VectorDependenciaViewModel
 from views.calculator_page import CalculatorPage
 from views.combination_page import CombinationPage
 from views.home_page import HomePage
+from views.matrix_operations_page import MatrixOperationsPage
 from views.matrix_equation_page import MatrixEquationPage
 from views.mer_page import MerPage
 from views.vector_properties_page import VectorPropertiesPage
@@ -65,6 +67,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self.calculator_vm = MatrixCalculatorViewModel()
         self.vector_vm = VectorPropiedadesViewModel()
         self.combination_vm = CombinacionLinealViewModel()
+        self.matrix_ops_vm = MatrixOperationsViewModel()
         self.matrix_eq_vm = MatrixEquationViewModel()
         self.dependence_vm = VectorDependenciaViewModel()
 
@@ -145,10 +148,11 @@ class MatrixCalculatorWindow(QMainWindow):
             ("home", "Inicio", HomePage()),
             ("calculator", "Resolver", CalculatorPage(self.calculator_vm)),
             ("mer", "MER", MerPage()),
-            ("vectors", "Propiedades ℝ^n", VectorPropertiesPage(self.vector_vm)),
-            ("combination", "Combinación", CombinationPage(self.combination_vm)),
+            ("vectors", "Propiedades R^n", VectorPropertiesPage(self.vector_vm)),
+            ("combination", "Combinacion", CombinationPage(self.combination_vm)),
             ("matrix_eq", "AX = B", MatrixEquationPage(self.matrix_eq_vm)),
             ("dependence", "Dependencia", VectorDependencePage(self.dependence_vm)),
+            ("matrix_ops", "Operaciones", MatrixOperationsPage(self.matrix_ops_vm)),
         ]
 
         for index, (key, label, widget) in enumerate(pages):
