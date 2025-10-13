@@ -157,7 +157,7 @@ class TransposeView:
                 row_fields.append(f)
                 row_controls.append(f)
             self._a_cells.append(row_fields)
-        self._matrix_a_container.controls.append(ft.Row(row_controls, spacing=8))
+            self._matrix_a_container.controls.append(ft.Row(row_controls, spacing=8))
         self._safe_update(self._matrix_a_container)
         self._update_info_label()
 
