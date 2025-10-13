@@ -7,6 +7,15 @@ from .matrix_equation_view import MatrixEquationView
 from .vector_properties_view import VectorPropertiesView
 from .mer_notes_view import MerNotesView
 from .walkthrough import WalkthroughView
+from .matrix_ops_view import MatrixOpsView
+from .transpose_view import TransposeView
+from .combination_view import CombinationView
+from .custom_config_panels import (
+    CombinationConfigPanel,
+    MatrixOpsConfigPanel,
+    TransposeConfigPanel,
+    VectorPropertiesConfigPanel,
+)
 
 __all__ = [
     "LeftMethodsMenu",
@@ -16,4 +25,11 @@ __all__ = [
     "VectorPropertiesView",
     "MerNotesView",
     "WalkthroughView",
+    "MatrixOpsView",
+    "TransposeView",
+    "CombinationView",
+    "CombinationConfigPanel",
+    "MatrixOpsConfigPanel",
+    "TransposeConfigPanel",
+    "VectorPropertiesConfigPanel",
 ]

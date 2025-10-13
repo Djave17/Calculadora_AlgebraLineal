@@ -15,6 +15,16 @@ Herramienta desarrollada para los ejercicios de la UAM siguiendo:
 
 El algoritmo Gauss–Jordan registra cada operación (intercambio, normalización, eliminación) y todas las operaciones usan `fractions.Fraction` (Chapra & Canale).
 
+#### Documentación por módulos
+
+- Models: Modelos básicos y tipos – ver Models/README.md
+- Operadores: Algoritmos de álgebra lineal (Gauss–Jordan, vectores, utilidades) – ver Operadores/README.md
+- ViewModels: Fachadas para la UI (ResultVM, interpretaciones, combinación lineal, operaciones de matrices) – ver ViewModels/README.md
+- UI: Interfaz Flet y componentes – ver UI/README.md
+- UI/views/components: Componentes de la UI (editor, ecuación AX=B, ops de matrices, diálogo de pasos) – ver UI/views/components/README.md
+- UI/pyside_views: Versión histórica en PySide6 – ver UI/pyside_views/README.md
+- tests: Suite de pruebas – ver tests/README.md
+
 #### Guía paso a paso
 
 1. **Propiedades en ℝⁿ**

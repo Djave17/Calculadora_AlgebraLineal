@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 import flet as ft
-from flet import Colors as colors
+from flet import Colors as colors, Icons as icons
 
 from ViewModels.linear_algebra_vm import LinearAlgebraViewModel
 
@@ -15,10 +15,12 @@ class VectorPropertiesView:
         self._page = page
         self._vm = view_model
 
-        self._u_field = ft.TextField(label="Vector u", hint_text="Ej: 1,2,3", expand=True)
-        self._v_field = ft.TextField(label="Vector v", hint_text="Ej: 0,1,-1", expand=True)
-        self._w_field = ft.TextField(label="Vector w (opcional)", hint_text="Ej: 1,1,1", expand=True)
-        self._alpha_field = ft.TextField(label="Escalar α (opcional)", hint_text="Ej: 2/3", expand=True)
+        common_kwargs = dict(expand=True, multiline=True, min_lines=1, max_lines=5)
+        self._u_field = ft.TextField(label="Vector u", hint_text="Ej: 1,2,3", **common_kwargs)
+        self._v_field = ft.TextField(label="Vector v", hint_text="Ej: 0,1,-1", **common_kwargs)
+        self._w_field = ft.TextField(label="Vector w (opcional)", hint_text="Ej: 1,1,1", **common_kwargs)
+        self._alpha_text: str = ""
+        self._alpha_label = ft.Text("α = —", color=colors.GREY_600)
 
         self._result_container = ft.Column(spacing=8, expand=True)
         self._result_container.controls.append(
@@ -26,6 +28,7 @@ class VectorPropertiesView:
         )
 
         self._root = self._build()
+        self._update_alpha_label()
 
     @property
     def view(self) -> ft.Control:
@@ -51,15 +54,14 @@ class VectorPropertiesView:
                 self._u_field,
                 self._v_field,
                 self._w_field,
-                self._alpha_field,
             ],
         )
 
         actions = ft.Row(
             spacing=12,
             controls=[
-                ft.FilledButton("Calcular", icon=ft.icons.PLAY_ARROW, on_click=self._handle_calculate),
-                ft.OutlinedButton("Limpiar", icon=ft.icons.CLEAR, on_click=self._handle_clear),
+                ft.FilledButton("Calcular", icon=icons.PLAY_ARROW, on_click=self._handle_calculate),
+                ft.OutlinedButton("Limpiar", icon=icons.CLEAR, on_click=self._handle_clear),
             ],
         )
 
@@ -92,7 +94,7 @@ class VectorPropertiesView:
             content=ft.Column(
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-                controls=[card],
+                controls=[card, self._alpha_label],
             ),
         )
 
@@ -103,24 +105,27 @@ class VectorPropertiesView:
                 "u": self._u_field.value or "",
                 "v": self._v_field.value or "",
                 "w": self._w_field.value or "",
-                "alpha": self._alpha_field.value or "",
+                "alpha": self._alpha_text,
             }
             resultado = self._vm.propiedades_Rn(data)
         except Exception as exc:  # pragma: no cover - propagación a UI
             self._show_error(str(exc))
             return
 
+        self._update_alpha_label()
         self._render_result(resultado)
 
     def _handle_clear(self, _event) -> None:
-        for field in (self._u_field, self._v_field, self._w_field, self._alpha_field):
+        for field in (self._u_field, self._v_field, self._w_field):
             field.value = ""
             field.update()
+        # Conservar α definido desde el panel lateral
         self._result_container.controls.clear()
         self._result_container.controls.append(
             ft.Text("Introduce vectores para ver los resultados.", color=colors.GREY_600)
         )
         self._result_container.update()
+        self._update_alpha_label()
 
     # ------------------------------ Presentación ------------------------------
     def _render_result(self, data: dict) -> None:
@@ -167,3 +172,19 @@ class VectorPropertiesView:
         )
         self._page.snack_bar.open = True
         self._page.update()
+
+    def set_alpha(self, alpha_text: str) -> None:
+        self._alpha_text = alpha_text or ""
+        self._update_alpha_label()
+
+    def alpha_text(self) -> str:
+        return self._alpha_text
+
+    def _update_alpha_label(self) -> None:
+        display = self._alpha_text.strip() or "—"
+        self._alpha_label.value = f"α = {display}"
+        try:
+            if self._alpha_label.page:
+                self._alpha_label.update()
+        except AssertionError:
+            pass

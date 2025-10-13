@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import List, Optional, Tuple
+from Operadores.vectores import parse_vector as _parse_vector_lib
 
 
 @dataclass
@@ -28,39 +29,14 @@ class VectorPropiedadesViewModel:
         self.tol = tol
 
     def parse_vector(self, text: str) -> List[Fraction]:
-        """Convierte una cadena en lista de fracciones exactas.
+        """Delegado unificado para parsear vectores.
 
-        Acepta formatos como ``1,2,3/5`` o ``(1/2  3)`` y genera mensajes
-        claros si alguna componente no puede convertirse en número racional.
+        Reutiliza Operadores.vectores.parse_vector para mantener una única
+        fuente de la verdad y evitar duplicación de lógica de parseo.
+        Devuelve una lista de Fraction para su uso en esta vista.
         """
-
-        if text is None:
-            raise ValueError(
-                "Debes proporcionar componentes para el vector conforme a la definición de ℝⁿ (Lay, §1.2)."
-            )
-        s = text.strip()
-        if s == "":
-            raise ValueError(
-                "Debes proporcionar componentes para el vector conforme a la definición de ℝⁿ (Lay, §1.2)."
-            )
-        s = s.replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
-        tokens = re.split(r"[\s,]+", s.strip())
-        valores: List[Fraction] = []
-        for token in tokens:
-            if token == "":
-                continue
-            try:
-                valores.append(Fraction(token))
-            except ValueError as exc:
-                raise ValueError(
-                    f"El valor '{token}' no puede convertirse en fracción racional; "
-                    "recuerda que en ℝ cada componente debe ser un número real (Grossman, cap. 1)."
-                ) from exc
-        if not valores:
-            raise ValueError(
-                "No se detectaron componentes numéricas; revisa el formato propuesto en clase."
-            )
-        return valores
+        vec = _parse_vector_lib(text)
+        return list(vec.componentes)
 
     def parse_scalar(self, text: str) -> Fraction:
         """Interpreta el texto de la IU como un escalar (posible fracción)."""

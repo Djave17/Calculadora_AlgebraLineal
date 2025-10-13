@@ -18,6 +18,16 @@ from .components import (
     VectorPropertiesView,
 )
 from .components.steps_dialog import show_steps_dialog
+from .components.matrix_ops_view import MatrixOpsView
+from .components.combination_view import CombinationView
+from .components.transpose_view import TransposeView
+from .components.custom_config_panels import (
+    CombinationConfigPanel,
+    MatrixOpsConfigPanel,
+    TransposeConfigPanel,
+    VectorPropertiesConfigPanel,
+)
+from .components.transpose_view import TransposeView
 
 
 class MainShell:
@@ -52,6 +62,15 @@ class MainShell:
         self._matrix_equation_view: Optional[MatrixEquationView] = None
         self._vector_properties_view: Optional[VectorPropertiesView] = None
         self._mer_view: Optional[MerNotesView] = None
+        self._matrix_ops_view: Optional[MatrixOpsView] = None
+        self._combination_view: Optional[CombinationView] = None
+        self._transpose_view: Optional[TransposeView] = None
+
+        self._matrix_ops_config: Optional[MatrixOpsConfigPanel] = None
+        self._combination_config_panel: Optional[CombinationConfigPanel] = None
+        self._transpose_config_panel: Optional[TransposeConfigPanel] = None
+        self._vector_properties_config: Optional[VectorPropertiesConfigPanel] = None
+        self._transpose_view: Optional[TransposeView] = None
 
         self._config_panel: Optional[RightConfigPanel] = None
         self._config_container: Optional[ft.Container] = None
@@ -231,6 +250,21 @@ class MainShell:
             self._vector_properties_view = VectorPropertiesView(self.page, LinearAlgebraViewModel())
         return self._vector_properties_view
 
+    def _ensure_matrix_ops_view(self) -> MatrixOpsView:
+        if self._matrix_ops_view is None:
+            self._matrix_ops_view = MatrixOpsView()
+        return self._matrix_ops_view
+
+    def _ensure_transpose_view(self) -> TransposeView:
+        if self._transpose_view is None:
+            self._transpose_view = TransposeView()
+        return self._transpose_view
+
+    def _ensure_combination_view(self) -> CombinationView:
+        if self._combination_view is None:
+            self._combination_view = CombinationView(self.page, self._handle_show_steps)
+        return self._combination_view
+
     def _ensure_mer_view(self) -> MerNotesView:
         if self._mer_view is None:
             self._mer_view = MerNotesView()
@@ -256,6 +290,7 @@ class MainShell:
                 self._config_panel.set_dimensions(vm.rows, vm.cols)
                 self._config_panel.update_method(method)
             if self._config_container:
+                self._config_container.content = self._config_panel.view
                 self._config_container.visible = self._config_visible
                 self._safe_update(self._config_container)
 
@@ -270,11 +305,57 @@ class MainShell:
 
         elif method.view_type == "vector_properties":
             view = self._ensure_vector_properties_view()
+            config = self._ensure_vector_properties_config(method)
+            config.set_alpha(view.alpha_text())
             if self._center_container:
                 self._center_container.content = view.view
                 self._safe_update(self._center_container)
             if self._config_container:
-                self._config_container.visible = False
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "matrix_ops":
+            view = self._ensure_matrix_ops_view()
+            config = self._ensure_matrix_ops_config(method)
+            rows_a, cols_a, rows_b, cols_b = view.dimensions()
+            config.set_values(rows_a, cols_a, rows_b, cols_b, view.alpha_text())
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "matrix_transpose":
+            view = self._ensure_transpose_view()
+            config = self._ensure_transpose_config(method)
+            rows, cols = view.parameters()
+            config.set_values(rows, cols, view.alpha_text())
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "combination":
+            view = self._ensure_combination_view()
+            config = self._ensure_combination_config(method)
+            dim, count = view.parameters()
+            config.set_values(dim, count)
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
                 self._safe_update(self._config_container)
 
         elif method.view_type == "mer_notes":
@@ -300,3 +381,53 @@ class MainShell:
                 control.update()
         except AssertionError:
             pass
+
+    # ------------------------------ Config panels ------------------------------
+    def _ensure_matrix_ops_config(self, method: MethodInfo) -> MatrixOpsConfigPanel:
+        if self._matrix_ops_config is None:
+            self._matrix_ops_config = MatrixOpsConfigPanel(method, self._handle_matrix_ops_config_change)
+        return self._matrix_ops_config
+
+    def _ensure_transpose_config(self, method: MethodInfo) -> TransposeConfigPanel:
+        if self._transpose_config_panel is None:
+            self._transpose_config_panel = TransposeConfigPanel(method, self._handle_transpose_config_change)
+        return self._transpose_config_panel
+
+    def _ensure_combination_config(self, method: MethodInfo) -> CombinationConfigPanel:
+        if self._combination_config_panel is None:
+            self._combination_config_panel = CombinationConfigPanel(method, self._handle_combination_config_change)
+        return self._combination_config_panel
+
+    def _ensure_vector_properties_config(self, method: MethodInfo) -> VectorPropertiesConfigPanel:
+        if self._vector_properties_config is None:
+            self._vector_properties_config = VectorPropertiesConfigPanel(method, self._handle_vector_properties_config_change)
+        return self._vector_properties_config
+
+    def _handle_matrix_ops_config_change(self, rows_a: int, cols_a: int, rows_b: int, cols_b: int, alpha: str) -> None:
+        view = self._ensure_matrix_ops_view()
+        view.set_dimensions(rows_a, cols_a, rows_b, cols_b)
+        view.set_alpha(alpha)
+        if self._matrix_ops_config:
+            ra, ca, rb, cb = view.dimensions()
+            self._matrix_ops_config.set_values(ra, ca, rb, cb, view.alpha_text())
+
+    def _handle_transpose_config_change(self, rows: int, cols: int, alpha: str) -> None:
+        view = self._ensure_transpose_view()
+        view.set_dimensions(rows, cols)
+        view.set_alpha(alpha)
+        if self._transpose_config_panel:
+            r, c = view.parameters()
+            self._transpose_config_panel.set_values(r, c, view.alpha_text())
+
+    def _handle_combination_config_change(self, dimension: int, count: int) -> None:
+        view = self._ensure_combination_view()
+        view.set_parameters(dimension, count)
+        if self._combination_config_panel:
+            dim, cnt = view.parameters()
+            self._combination_config_panel.set_values(dim, cnt)
+
+    def _handle_vector_properties_config_change(self, alpha_text: str) -> None:
+        view = self._ensure_vector_properties_view()
+        view.set_alpha(alpha_text)
+        if self._vector_properties_config:
+            self._vector_properties_config.set_alpha(view.alpha_text())

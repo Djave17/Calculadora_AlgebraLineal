@@ -4,7 +4,7 @@ from fractions import Fraction
 from typing import List, Optional
 
 import flet as ft
-from flet import Colors as colors
+from flet import Colors as colors, Icons as icons
 
 from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel, MatrixEquationResultVM, ResultVM
 
@@ -135,8 +135,8 @@ class MatrixEquationView:
         actions = ft.Row(
             spacing=12,
             controls=[
-                ft.FilledButton("Resolver", icon=ft.icons.PLAY_ARROW, on_click=self._handle_resolve),
-                ft.OutlinedButton("Limpiar", icon=ft.icons.CLEAR, on_click=self._handle_clear),
+                ft.FilledButton("Resolver", icon=icons.PLAY_ARROW, on_click=self._handle_resolve),
+                ft.OutlinedButton("Limpiar", icon=icons.CLEAR, on_click=self._handle_clear),
             ],
         )
 
@@ -210,8 +210,8 @@ class MatrixEquationView:
             self._b_cells.append(row_fields)
             self._matrix_b_container.controls.append(ft.Row(row_controls, spacing=8))
 
-        self._matrix_a_container.update()
-        self._matrix_b_container.update()
+        self._safe_update(self._matrix_a_container)
+        self._safe_update(self._matrix_b_container)
 
     # ------------------------------ Eventos ------------------------------
     def _handle_dimension_change(self) -> None:
@@ -296,7 +296,7 @@ class MatrixEquationView:
                     ft.Text(f"Columna {column_vm.label}", weight=ft.FontWeight.BOLD),
                     ft.TextButton(
                         "Ver pasos",
-                        icon=ft.icons.NAVIGATE_NEXT,
+                        icon=icons.NAVIGATE_NEXT,
                         on_click=lambda e, res=result, lbl=column_vm.label: self._show_steps(res, lbl),
                         disabled=not result.steps,
                     ),
@@ -324,3 +324,10 @@ class MatrixEquationView:
         self._page.snack_bar = ft.SnackBar(bgcolor=colors.ERROR, content=ft.Text(message))
         self._page.snack_bar.open = True
         self._page.update()
+
+    def _safe_update(self, control: ft.Control | None) -> None:
+        try:
+            if control and control.page:
+                control.update()
+        except AssertionError:
+            pass
