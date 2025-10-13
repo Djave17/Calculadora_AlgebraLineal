@@ -4,7 +4,7 @@ from fractions import Fraction
 from typing import List, Optional
 
 import flet as ft
-from flet import Colors as colors, Icons as icons
+from flet import Icons as icons
 
 from ...helpers import parse_matrix
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
