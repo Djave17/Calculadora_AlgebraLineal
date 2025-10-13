@@ -1,10 +1,10 @@
-"""Ventana principal de la calculadora de álgebra lineal.
+"""Ventana principal de la calculadora de algebra lineal.
 
-El módulo ahora compone las vistas modulares (`CalculatorPage`,
+El modulo ahora compone las vistas modulares (`CalculatorPage`,
 `VectorPropertiesPage`, etc.) y los ViewModels definidos en el paquete
-`ViewModels`. De esta manera se respeta la separación del patrón MVVM
+`ViewModels`. De esta manera se respeta la separacion del patron MVVM
 (Silverlight Toolkit, 2009) y se evitan las dependencias circulares que
-se tenían al mezclar la lógica en un solo archivo.
+se tenian al mezclar la logica en un solo archivo.
 """
 
 from __future__ import annotations
@@ -27,13 +27,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-# Agregar raíz del proyecto al sys.path cuando se ejecuta como script.
+# Agregar raiz del proyecto al sys.path cuando se ejecuta como script.
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from ViewModels.combinacion_lineal_vm import CombinacionLinealViewModel
 from ViewModels.matrix_operations_vm import MatrixOperationsViewModel
+from ViewModels.matrix_transpose_vm import MatrixTransposeViewModel
 from ViewModels.matrix_equation_vm import MatrixEquationViewModel
 from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel
 from ViewModels.vector_propiedades_vm import VectorPropiedadesViewModel
@@ -43,6 +44,7 @@ from views.calculator_page import CalculatorPage
 from views.combination_page import CombinationPage
 from views.home_page import HomePage
 from views.matrix_operations_page import MatrixOperationsPage
+from views.matrix_transpose_page import MatrixTransposePage
 from views.matrix_equation_page import MatrixEquationPage
 from views.mer_page import MerPage
 from views.vector_properties_page import VectorPropertiesPage
@@ -50,7 +52,7 @@ from views.vector_dependence_page import VectorDependencePage
 
 
 class MatrixCalculatorWindow(QMainWindow):
-    """Ventana principal que coordina navegación y ViewModels."""
+    """Ventana principal que coordina navegacion y ViewModels."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -62,16 +64,17 @@ class MatrixCalculatorWindow(QMainWindow):
         self._nav_collapsed = False
         self._apply_dark_theme()
 
-    # ---------------------- Composición de ViewModels ----------------------
+    # ---------------------- Composicion de ViewModels ----------------------
     def _create_view_models(self) -> None:
         self.calculator_vm = MatrixCalculatorViewModel()
         self.vector_vm = VectorPropiedadesViewModel()
         self.combination_vm = CombinacionLinealViewModel()
         self.matrix_ops_vm = MatrixOperationsViewModel()
+        self.matrix_transpose_vm = MatrixTransposeViewModel()
         self.matrix_eq_vm = MatrixEquationViewModel()
         self.dependence_vm = VectorDependenciaViewModel()
 
-    # ----------------------------- Configuración de UI -----------------------------
+    # ----------------------------- Configuracion de UI -----------------------------
     def _build_ui(self) -> None:
         central = QWidget(self)
         self.setCentralWidget(central)
@@ -89,7 +92,7 @@ class MatrixCalculatorWindow(QMainWindow):
         self.pages: Dict[str, Tuple[QWidget, QPushButton]] = {}
         self._register_pages()
 
-        # Seleccionar la página de inicio por defecto
+        # Seleccionar la pagina de inicio por defecto
         self._set_current_page("home")
 
     def _build_nav_panel(self) -> QWidget:
@@ -105,7 +108,7 @@ class MatrixCalculatorWindow(QMainWindow):
         top_bar.setContentsMargins(0, 0, 0, 0)
         top_bar.setSpacing(8)
 
-        self.nav_toggle = QPushButton("≡")
+        self.nav_toggle = QPushButton("")
         self.nav_toggle.setObjectName("navToggleButton")
         self.nav_toggle.setCursor(Qt.PointingHandCursor)
         self.nav_toggle.setFixedWidth(44)
@@ -153,6 +156,7 @@ class MatrixCalculatorWindow(QMainWindow):
             ("matrix_eq", "AX = B", MatrixEquationPage(self.matrix_eq_vm)),
             ("dependence", "Dependencia", VectorDependencePage(self.dependence_vm)),
             ("matrix_ops", "Operaciones", MatrixOperationsPage(self.matrix_ops_vm)),
+            ("transpose", "Traspuesta", MatrixTransposePage(self.matrix_transpose_vm)),
         ]
 
         for index, (key, label, widget) in enumerate(pages):
@@ -162,7 +166,7 @@ class MatrixCalculatorWindow(QMainWindow):
 
         self._nav_buttons_layout.addStretch(1)
 
-    # ----------------------------- Navegación ---------------------------
+    # ----------------------------- Navegacion ---------------------------
     def _on_nav_clicked(self, key: str, index: int) -> None:
         self.stack.setCurrentIndex(index)
         for name, (_, button) in self.pages.items():
@@ -314,5 +318,5 @@ def run() -> None:
     sys.exit(app.exec())
 
 
-if __name__ == "__main__":  # pragma: no cover - ruta de ejecución manual
+if __name__ == "__main__":  # pragma: no cover - ruta de ejecucion manual
     run()

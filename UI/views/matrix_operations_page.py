@@ -87,7 +87,7 @@ class MatrixOperationsPage(QWidget):
 
         config_row.addWidget(QLabel("Numero de matrices:"))
         self.matrices_spin = QSpinBox()
-        self.matrices_spin.setRange(2, self.MAX_MATRICES)
+        self.matrices_spin.setRange(1, self.MAX_MATRICES)
         self.matrices_spin.setValue(2)
         config_row.addWidget(self.matrices_spin)
 
@@ -177,6 +177,13 @@ class MatrixOperationsPage(QWidget):
 
     # ------------------------------- Manejadores -------------------------------
     def _handle_sum(self) -> None:
+        if self.matrices_spin.value() < 2:
+            QMessageBox.warning(
+                self,
+                "Operacion no disponible",
+                "La suma requiere al menos dos matrices. Ajusta el numero de matrices y vuelve a intentarlo.",
+            )
+            return
         try:
             matrices = self._collect_all_matrices()
         except ValueError as exc:
@@ -388,6 +395,23 @@ class MatrixOperationsPage(QWidget):
             else "La operacion no es compatible con las dimensiones ingresadas."
         )
         lines.append(compat_text)
+        if result.defined_message:
+            lines.append(result.defined_message)
+
+        if not result.compatible:
+            QMessageBox.warning(
+                self,
+                "Operacion no definida",
+                result.defined_message or "La operacion no puede realizarse con las dimensiones dadas.",
+            )
+
+        if result.property_name or result.property_statement:
+            lines.append("")
+            if result.property_name:
+                lines.append(f"Propiedad aplicada: {result.property_name}")
+            if result.property_statement:
+                lines.append(f"  {result.property_statement}")
+
         lines.append("")
         lines.extend(result.steps)
 

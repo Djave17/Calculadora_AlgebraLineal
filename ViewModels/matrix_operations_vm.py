@@ -16,6 +16,9 @@ class OperationResult:
     compatible: bool
     steps: List[str]
     result_matrix: List[List[Fraction]] | None
+    property_name: str = ""
+    property_statement: str = ""
+    defined_message: str = ""
 
 
 class MatrixOperationsViewModel:
@@ -43,9 +46,13 @@ class MatrixOperationsViewModel:
                 compatible = False
                 break
 
+        property_name = "Ley conmutativa de la suma"
+        property_statement = "A + B = B + A"
+
         if not compatible:
             steps.append("Las matrices NO son compatibles para la suma.")
-            return OperationResult(False, steps, None)
+            defined_message = "Operacion no definida: existen matrices con dimensiones distintas."
+            return OperationResult(False, steps, None, property_name, property_statement, defined_message)
 
         steps.append("Las matrices son compatibles para la suma.")
         result: List[List[Fraction]] = []
@@ -62,7 +69,8 @@ class MatrixOperationsViewModel:
             result.append(fila_resultado)
 
         steps.append("Paso 3: Resultado final de la suma calculado.")
-        return OperationResult(True, steps, result)
+        defined_message = f"Operacion definida: todas las matrices son de dimension {base_rows}x{base_cols}."
+        return OperationResult(True, steps, result, property_name, property_statement, defined_message)
 
     def add(self, A_rows: Sequence[Sequence], B_rows: Sequence[Sequence]) -> OperationResult:
         return self.add_multiple([A_rows, B_rows])
@@ -76,9 +84,13 @@ class MatrixOperationsViewModel:
             f"A es {self._format_dimensions(A)} y B es {self._format_dimensions(B)}."
         )
 
+        property_name = "Relacion con la suma"
+        property_statement = "A - B = A + (-B)"
+
         if not self._same_shape(A, B):
             steps.append("Las matrices NO son compatibles para la resta (dimensiones distintas).")
-            return OperationResult(False, steps, None)
+            defined_message = "Operacion no definida: la resta requiere matrices de igual dimension."
+            return OperationResult(False, steps, None, property_name, property_statement, defined_message)
 
         steps.append("Las matrices son compatibles para la resta.")
         result: List[List[Fraction]] = []
@@ -91,7 +103,10 @@ class MatrixOperationsViewModel:
             result.append(fila)
 
         steps.append("Paso 3: Resultado final de la resta calculado.")
-        return OperationResult(True, steps, result)
+        filas = len(A)
+        columnas = len(A[0])
+        defined_message = f"Operacion definida: A y B son de dimension {filas}x{columnas}."
+        return OperationResult(True, steps, result, property_name, property_statement, defined_message)
 
     def scalar_multiply(self, scalar: str, A_rows: Sequence[Sequence]) -> OperationResult:
         escalar = self._parse_number(scalar)
@@ -101,6 +116,9 @@ class MatrixOperationsViewModel:
             f"Paso 1: Preparando multiplicacion escalar. k = {escalar}. "
             f"A es {self._format_dimensions(A)}."
         )
+
+        property_name = "Escalar aplicado a la matriz"
+        property_statement = "kA multiplica cada entrada de A por k"
 
         resultado: List[List[Fraction]] = []
         for i, fila in enumerate(A, start=1):
@@ -112,7 +130,8 @@ class MatrixOperationsViewModel:
             resultado.append(fila_resultado)
 
         steps.append("Paso 3: Resultado final de k * A calculado.")
-        return OperationResult(True, steps, resultado)
+        defined_message = f"Operacion definida: cualquier matriz puede multiplicarse por el escalar {escalar}."
+        return OperationResult(True, steps, resultado, property_name, property_statement, defined_message)
 
     def multiply(self, A_rows: Sequence[Sequence], B_rows: Sequence[Sequence]) -> OperationResult:
         A = to_fraction_matrix(A_rows)
@@ -123,12 +142,18 @@ class MatrixOperationsViewModel:
             f"A es {self._format_dimensions(A)} y B es {self._format_dimensions(B)}."
         )
 
+        property_name = "Condicion de producto"
+        property_statement = "Si columnas(A) = filas(B), entonces AB esta definido"
+
         if len(A[0]) != len(B):
             steps.append(
                 "El producto AB NO es posible porque el numero de columnas de A no coincide "
                 "con el numero de filas de B."
             )
-            return OperationResult(False, steps, None)
+            defined_message = (
+                "Operacion no definida: se requiere que las columnas de A coincidan con las filas de B."
+            )
+            return OperationResult(False, steps, None, property_name, property_statement, defined_message)
 
         steps.append(
             "El producto AB es posible. Calculando cada entrada como suma de productos fila-columna."
@@ -147,7 +172,11 @@ class MatrixOperationsViewModel:
             resultado.append(fila_resultado)
 
         steps.append("Paso 3: Resultado final de AB calculado.")
-        return OperationResult(True, steps, resultado)
+        defined_message = (
+            f"Operacion definida: A es {len(A)}x{len(A[0])}, B es {len(B)}x{len(B[0])} y el resultado es "
+            f"{len(A)}x{len(B[0])}."
+        )
+        return OperationResult(True, steps, resultado, property_name, property_statement, defined_message)
 
     @staticmethod
     def _format_dimensions(matrix: Sequence[Sequence[Fraction]]) -> str:
