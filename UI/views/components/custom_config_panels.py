@@ -5,6 +5,7 @@ from typing import Callable
 import flet as ft
 
 from ...styles import PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED, BORDER_COLOR
+from flet import Colors as colors
 from ...methods import MethodInfo
 
 
@@ -400,8 +401,8 @@ class MatrixIdentitiesConfigPanel(_BaseConfigPanel):
         actions = ft.Row(
             spacing=10,
             controls=[
-                ft.FilledButton("Resolver", on_click=lambda _: self._on_resolve()),
-                ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear()),
+                ft.FilledButton("Resolver", on_click=lambda _: self._on_resolve(), style=RED_FILLED_STYLE),
+                ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear(), style=RED_OUTLINED_STYLE),
             ],
         )
 
@@ -509,8 +510,8 @@ class VectorPropertiesConfigPanel(_BaseConfigPanel):
         actions = ft.Column(
             spacing=10,
             controls=[
-                ft.FilledButton("Resolver", on_click=lambda _: self._on_resolve()),
-                ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear()),
+                ft.FilledButton("Resolver", on_click=lambda _: self._on_resolve(), style=RED_FILLED_STYLE),
+                ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear(), style=RED_OUTLINED_STYLE),
             ],
         )
 
@@ -572,4 +573,15 @@ class VectorPropertiesConfigPanel(_BaseConfigPanel):
 
     def value_alpha(self) -> str:
         return self._alpha
+RED_FILLED_STYLE = ft.ButtonStyle(
+    bgcolor={ft.ControlState.DEFAULT: PRIMARY_COLOR},
+    color={ft.ControlState.DEFAULT: colors.WHITE},
+    overlay_color={ft.ControlState.HOVERED: SECONDARY_COLOR},
+    shape=ft.RoundedRectangleBorder(radius=12),
+)
 
+RED_OUTLINED_STYLE = ft.ButtonStyle(
+    side={ft.ControlState.DEFAULT: ft.border.BorderSide(width=1, color=PRIMARY_COLOR)},
+    color={ft.ControlState.DEFAULT: PRIMARY_COLOR},
+    shape=ft.RoundedRectangleBorder(radius=12),
+)

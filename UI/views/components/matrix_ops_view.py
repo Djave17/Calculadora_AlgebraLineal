@@ -104,7 +104,17 @@ class MatrixOpsView:
             options=[ft.dropdown.Option(key, label) for key, label in operations],
             width=240,
         )
-        self._execute_button = ft.FilledButton("Aplicar", icon=icons.PLAY_ARROW, on_click=self._run_selected_operation)
+        self._execute_button = ft.FilledButton(
+            "Aplicar",
+            icon=icons.PLAY_ARROW,
+            on_click=self._run_selected_operation,
+            style=ft.ButtonStyle(
+                bgcolor={ft.ControlState.DEFAULT: PRIMARY_COLOR},
+                color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
+                overlay_color={ft.ControlState.HOVERED: SECONDARY_COLOR},
+                shape=ft.RoundedRectangleBorder(radius=12),
+            ),
+        )
 
         actions = ft.Row(
             spacing=12,

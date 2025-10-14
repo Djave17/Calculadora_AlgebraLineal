@@ -1,89 +1,73 @@
-### Calculadora de Álgebra Lineal (GUI/CLI)
+## Calculadora de Álgebra Lineal
 
-Herramienta desarrollada para los ejercicios de la UAM siguiendo:
+Aplicación GUI/CLI diseñada para cursos de álgebra lineal (UAM). Toda la aritmética se realiza con `fractions.Fraction` para mantener exactitud; el solucionador de Gauss–Jordan registra cada paso elemental (intercambio, normalización y eliminación).
 
-- Grossman, S. & Flores Godoy, J. (2019). *Álgebra lineal* (8.ª ed.).
-- Lay, D. C. (2012). *Álgebra lineal y sus aplicaciones* (4.ª ed.).
-- Chapra, S. C. & Canale, R. P. (2015). *Métodos numéricos para ingenieros* (7.ª ed.).
-- Poole, D. (2011). *Álgebra lineal: Introducción moderna* (3.ª ed.).
+### Referencias principales
+- Grossman & Flores Godoy, *Álgebra lineal* (8.ª ed.).
+- Lay, *Álgebra lineal y sus aplicaciones* (4.ª ed.).
+- Chapra & Canale, *Métodos numéricos para ingenieros* (7.ª ed.).
+- Poole, *Álgebra lineal: Introducción moderna* (3.ª ed.).
 
-#### Funcionalidades
+---
 
-1. **Propiedades en ℝⁿ** (Lay §1.2).
-2. **Combinación lineal / ecuación vectorial** (`A·c = b`, Grossman §2.1, Lay §1.4).
-3. **Ecuaciones matriciales AX = B** (Lay §2.3, Poole §1.5).
+### Módulos disponibles en la GUI
 
-El algoritmo Gauss–Jordan registra cada operación (intercambio, normalización, eliminación) y todas las operaciones usan `fractions.Fraction` (Chapra & Canale).
+| Módulo | Qué permite |
+| --- | --- |
+| **Gauss–Jordan** | Resolver sistemas lineales y ver cada paso Gauss–Jordan con pivoteo parcial. |
+| **Identidades de matrices** | Vista unificada para AX = B, combinación lineal y sistema homogéneo A·c = 0 (seleccionable dentro de la misma pantalla). |
+| **Propiedades en ℝⁿ** | Suma, producto por escalar y verificación de axiomas básicos (conmutativa, asociativa, neutro, opuesto). |
+| **Operaciones de matrices** | Suma, resta, α·A, producto A·B y traspuestas (A^T, B^T) con pasos detallados. |
+| **Matriz traspuesta** | Cálculo de A^T mostrando el intercambio de filas por columnas y verificación de propiedades. |
+| **MER – notas** | Material de apoyo y recordatorios teóricos. |
 
-#### Documentación por módulos
+---
 
-- Models: Modelos básicos y tipos – ver Models/README.md
-- Operadores: Algoritmos de álgebra lineal (Gauss–Jordan, vectores, utilidades) – ver Operadores/README.md
-- ViewModels: Fachadas para la UI (ResultVM, interpretaciones, combinación lineal, operaciones de matrices) – ver ViewModels/README.md
-- UI: Interfaz Flet y componentes – ver UI/README.md
-- UI/views/components: Componentes de la UI (editor, ecuación AX=B, ops de matrices, diálogo de pasos) – ver UI/views/components/README.md
-- UI/pyside_views: Versión histórica en PySide6 – ver UI/pyside_views/README.md
-- tests: Suite de pruebas – ver tests/README.md
+### Documentación por carpetas
 
-#### Guía paso a paso
+- [Models](Models/README.md) – Entidades base (`Matriz`, manejadores de errores).
+- [Operadores](Operadores/README.md) – Algoritmos de dominio (Gauss–Jordan, vectores, utilidades matriciales).
+- [ViewModels](ViewModels/README.md) – Adaptadores entre dominio y UI (ResultVM, interpretaciones, combinación, ops de matrices).
+- [UI](UI/README.md) – Estructura general de la interfaz en Flet.
+  - [UI/views/components](UI/views/components/README.md) – Componentes visuales reutilizables (editor, diálogo de pasos, paneles).
+  - [UI/pyside_views](UI/pyside_views/README.md) – Implementación histórica en PySide6.
+- [tests](tests/README.md) – Suite de pruebas unitarias.
 
-1. **Propiedades en ℝⁿ**
-   - Introduce los vectores `u`, `v` y opcionalmente `w` (Lay §1.2).
-   - Presiona “u + v” o “α · u” para ver la operación elemental.
-   - Usa “Verificar propiedades” para confirmar conmutativa, asociativa, neutro y opuesto.
-   - La salida indica si cada propiedad se cumple y muestra los cálculos intermedios.
+---
 
-2. **Combinación lineal / Ecuación vectorial**
-   - Captura los vectores generadores `v₁,…,vₖ` como columnas y el vector objetivo `b`.
-   - Se construye la matriz `A = [v₁ … vₖ]` y se resuelve `A·c = b` (Grossman §2.1).
-   - Resultado: clasificación (única, infinitas, inconsistente), solución particular y base del núcleo si aplica.
-   - La sección “Bitácora” detalla cada operación elemental del método de Gauss–Jordan.
+### Cómo ejecutar la interfaz gráfica
 
-3. **Ecuación matricial AX = B**
-   - Define filas y columnas de `A` y `B`; cada columna de `B` se resuelve como un sistema independiente (Lay §2.3).
-   - Guarda la bitácora de pasos por columna y la clasificación de cada sistema.
-
-#### Preguntas frecuentes
-
-- **¿Qué representa la bitácora de pasos?**<br>
-  Cada entrada responde a una operación elemental del método Gauss–Jordan (Lay §2.2). El formato `[nn] OPERACIÓN – descripción` indica el número de paso, el tipo (intercambio, normalización, eliminación) y la matriz resultante.
-
-- **¿Por qué se usa `Fraction` en lugar de floats?**<br>
-  Para evitar errores de redondeo y asegurar resultados exactos, siguiendo las recomendaciones numéricas de Chapra & Canale (2015).
-
-- **¿Cómo detecta la calculadora infinitas soluciones?**<br>
-  Se revisa el rango de `A` y la presencia de variables libres según el RREF (Lay §2.3, Poole §1.5). Se muestra una solución particular y un conjunto de direcciones del núcleo.
-
-- **¿Qué ocurre si la matriz B no tiene la misma cantidad de filas que A?**<br>
-  La GUI y el CLI muestran un mensaje claro y no intentan resolver el sistema; la condición `m_A = m_B` es necesaria para que `AX = B` tenga sentido (Grossman §2.1).
-
-- **¿Dónde encuentro ejemplos de referencia?**<br>
-  Revisa Lay §1.4–1.7 y Grossman §2.1 para ver problemas de combinación lineal; Poole §1.5 explica la interpretación geométrica de soluciones infinitas.
-
-#### Ejecución GUI
-
-```
+```bash
 python UI/main.py
 ```
 
-- Selecciona la sección en el panel izquierdo.
-- Introduce vectores/matrices; la bitácora aparece en la parte derecha.
-- En AX=B puedes definir filas de `A` y `B`; si difieren se muestra un mensaje.
+1. Selecciona el módulo en el panel izquierdo.
+2. Ajusta dimensiones y parámetros desde el panel derecho.
+3. Introduce datos (vectores o matrices); usa **Resolver** para ver resultados y **Ver pasos** cuando estén disponibles.
 
-#### Ejecución CLI
+### Modo CLI
 
-```
+```bash
 python cli_consola.py
 ```
 
-- Menú con cuatro opciones.
-- Entradas separadas por comas o espacios.
-- Se muestra clasificación, solución (única/paramétrica/inconsistente) y bitácora de pasos.
+El CLI guía por menús para resolver sistemas, combinación lineal y propiedades vectoriales. Los resultados incluyen clasificación (única, infinitas, inconsistente) y la bitácora Gauss–Jordan donde aplica.
 
-#### Pruebas
+---
 
-```
+### Preguntas frecuentes
+
+- **Bitácora de pasos**: Cada entrada corresponde a una operación elemental Gauss–Jordan, siguiendo la notación `[nn] OPERACIÓN – descripción`.  
+- **¿Por qué usar `Fraction`?** Evita errores de redondeo y mantiene exactitud simbólica (recomendación de Chapra & Canale).  
+- **Detección de infinitas soluciones**: Se revisa el rango de la matriz y las variables libres en la RREF (Lay §2.3, Poole §1.5).  
+- **Matriz no conforme**: Si A y B no son compatibles, la UI/CLI muestra un mensaje y no intenta resolver.
+
+---
+
+### Ejecutar pruebas
+
+```bash
 python -m unittest
 ```
 
-Incluye casos inspirados en Lay §1.7 y Grossman §2.1.
+Incluye casos inspirados en Lay §1.7 y Grossman §2.1 (solución única, infinitas, inconsistente, combinación lineal, etc.).

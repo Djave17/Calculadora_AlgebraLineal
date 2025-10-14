@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 import flet as ft
@@ -150,9 +151,13 @@ class MainShell:
         if match is None:
             return
         category, method = match
-        self.active_category = category
-        self.active_method = method
-        self._activate_method(method)
+        try:
+            self.active_category = category
+            self.active_method = method
+            self._activate_method(method)
+        except Exception as exc:  # pragma: no cover - seguridad en UI
+            logging.getLogger(__name__).exception("Error changing method to %s", method.id)
+            self._show_snackbar(f"Error al activar '{method.label}': {exc}", error=True)
 
     def _handle_dimensions_change(self, rows: int, cols: int) -> None:
         if self.active_method.view_type != "matrix_solver":
@@ -282,15 +287,6 @@ class MainShell:
             if self._config_container:
                 self._config_container.content = self._config_panel.view
                 self._config_container.visible = self._config_visible
-                self._safe_update(self._config_container)
-
-        elif method.view_type == "matrix_equation":
-            view = self._ensure_matrix_equation_view()
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.visible = False
                 self._safe_update(self._config_container)
 
         elif method.view_type == "vector_properties":
