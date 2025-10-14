@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List
 from fractions import Fraction
 
 import flet as ft
-from flet import Colors as colors
+from flet import Colors as colors, Icons as icons
 
 from ...styles import SURFACE_COLOR, BORDER_COLOR, PRIMARY_COLOR, TEXT_DARK, TEXT_MUTED
 
@@ -24,6 +24,10 @@ class VectorPropertiesView:
         self._dimension = 3
         self._alpha_text: str = ""
         self._alpha_label = ft.Text("α = —", color=colors.GREY_600)
+        self._steps_button: ft.TextButton | None = None
+        self._last_steps: List[str] = []
+        self._steps_button: ft.TextButton | None = None
+        self._last_steps: list[str] = []
 
         self._u_fields: list[ft.TextField] = []
         self._v_fields: list[ft.TextField] = []
@@ -58,6 +62,14 @@ class VectorPropertiesView:
             ],
         )
 
+        self._steps_button = ft.TextButton(
+            "Ver pasos",
+            icon=icons.NAVIGATE_NEXT,
+            visible=False,
+            on_click=self._show_steps_dialog,
+            style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+        )
+
         card = ft.Container(
             bgcolor=SURFACE_COLOR,
             border_radius=20,
@@ -76,6 +88,7 @@ class VectorPropertiesView:
                         padding=ft.Padding(16, 16, 16, 16),
                         content=self._result_container,
                     ),
+                    self._steps_button,
                 ],
             ),
         )
@@ -125,6 +138,7 @@ class VectorPropertiesView:
         except AssertionError:
             pass
         self._update_alpha_label()
+        self._set_steps([])
 
     def resolve(self) -> None:
         self._handle_calculate(None)
@@ -135,23 +149,26 @@ class VectorPropertiesView:
     # ------------------------------ Presentación ------------------------------
     def _render_result(self, data: dict) -> None:
         self._result_container.controls.clear()
+        steps: list[str] = []
 
         suma = data.get("suma")
         if suma:
             self._result_container.controls.append(ft.Text("Suma u + v", weight=ft.FontWeight.BOLD))
             self._result_container.controls.extend(ft.Text(line) for line in suma.get("pasos", []))
-            self._result_container.controls.append(
-                ft.Text(f"Resultado: {self._format_list(suma.get('resultado'))}")
-            )
+            steps.extend(suma.get("pasos", []))
+            resultado_suma = f"Resultado: {self._format_list(suma.get('resultado'))}"
+            self._result_container.controls.append(ft.Text(resultado_suma))
+            steps.append(resultado_suma)
 
         producto = data.get("producto_escalar")
         if producto:
             self._result_container.controls.append(ft.Divider())
             self._result_container.controls.append(ft.Text("Producto por escalar", weight=ft.FontWeight.BOLD))
             self._result_container.controls.extend(ft.Text(line) for line in producto.get("pasos", []))
-            self._result_container.controls.append(
-                ft.Text(f"Resultado: {self._format_list(producto.get('resultado'))}")
-            )
+            steps.extend(producto.get("pasos", []))
+            resultado_scalar = f"Resultado: {self._format_list(producto.get('resultado'))}"
+            self._result_container.controls.append(ft.Text(resultado_scalar))
+            steps.append(resultado_scalar)
 
         propiedades = data.get("propiedades", [])
         if propiedades:
@@ -159,15 +176,20 @@ class VectorPropertiesView:
             self._result_container.controls.append(ft.Text("Verificación de axiomas", weight=ft.FontWeight.BOLD))
             for prop in propiedades:
                 estado = "Sí" if prop.get("cumple") else "No"
-                self._result_container.controls.append(ft.Text(f"{prop.get('propiedad')}: {estado}"))
+                linea = f"{prop.get('propiedad')}: {estado}"
+                self._result_container.controls.append(ft.Text(linea))
+                steps.append(linea)
                 for paso in prop.get("pasos", []):
-                    self._result_container.controls.append(ft.Text(f"  - {paso}", size=12))
+                    detalle_line = f"  - {paso}"
+                    self._result_container.controls.append(ft.Text(detalle_line, size=12))
+                    steps.append(detalle_line)
 
         try:
             if self._result_container.page:
                 self._result_container.update()
         except AssertionError:
             pass
+        self._set_steps(steps)
 
     # ------------------------------ Utilidades ------------------------------
     def _show_error(self, message: str) -> None:
@@ -177,6 +199,7 @@ class VectorPropertiesView:
         )
         self._page.snack_bar.open = True
         self._page.update()
+        self._set_steps([])
 
     def set_alpha(self, alpha_text: str) -> None:
         self._alpha_text = (alpha_text or "").strip()
@@ -275,3 +298,39 @@ class VectorPropertiesView:
                 self._vectors_row.update()
         except AssertionError:
             pass
+
+    def _set_steps(self, steps: list[str]) -> None:
+        self._last_steps = steps
+        if self._steps_button:
+            self._steps_button.visible = bool(steps)
+            try:
+                if self._steps_button.page:
+                    self._steps_button.update()
+            except AssertionError:
+                pass
+
+    def _show_steps_dialog(self, _event=None) -> None:
+        if not self._last_steps:
+            return
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Pasos"),
+            content=ft.Container(
+                width=420,
+                content=ft.Column(controls=[ft.Text(line) for line in self._last_steps], scroll=ft.ScrollMode.AUTO),
+            ),
+            actions=[ft.TextButton("Cerrar", on_click=lambda e, dlg=dialog: self._close_dialog(dlg))],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        try:
+            self._page.open(dialog)
+        except AttributeError:
+            dialog.open = True
+            dialog.update()
+
+    def _close_dialog(self, dialog: ft.AlertDialog) -> None:
+        try:
+            self._page.close(dialog)
+        except AttributeError:
+            dialog.open = False
+            dialog.update()

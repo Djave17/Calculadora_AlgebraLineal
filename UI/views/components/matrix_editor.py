@@ -24,6 +24,7 @@ from ...styles import (
     TEXT_DARK,
     TEXT_MUTED,
 )
+from .steps_dialog import show_steps_dialog
 
 ToolbarAction = Callable[[str], None]
 
@@ -307,8 +308,12 @@ class MatrixEditor:
         self._active_cell = (row, col)
 
     def _handle_steps_clicked(self, _event) -> None:
-        if self._last_steps and self._on_request_steps:
+        if not self._last_steps:
+            return
+        if self._on_request_steps:
             self._on_request_steps(self._last_steps, self._last_pivot_cols)
+        else:
+            show_steps_dialog(self._page, self._last_steps, self._last_pivot_cols)
 
     # ------------------------------ API pública ------------------------------
     def set_dimensions(self, rows: int, cols: int) -> None:

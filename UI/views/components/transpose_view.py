@@ -22,12 +22,15 @@ class TransposeView:
     MIN = 1
     MAX = 8
 
-    def __init__(self) -> None:
+    def __init__(self, page: ft.Page) -> None:
+        self._page = page
         self._rows = 2
         self._cols = 2
         self._a_cells: List[List[ft.TextField]] = []
         self._alpha_text: str = ""
         self._info_label = ft.Text("", color=TEXT_MUTED)
+        self._last_steps: List[str] = []
+        self._steps_button: ft.TextButton | None = None
 
         self._matrix_a_container = ft.Column(spacing=6, expand=True)
         self._result_container = ft.Column(spacing=8, expand=True)
@@ -67,12 +70,27 @@ class TransposeView:
             ],
         )
 
+        self._steps_button = ft.TextButton(
+            "Ver pasos",
+            icon=icons.NAVIGATE_NEXT,
+            visible=False,
+            on_click=self._show_steps_dialog,
+            style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+        )
+
         results_card = ft.Container(
             bgcolor=SURFACE_COLOR,
             border_radius=16,
             border=ft.border.all(1, color=BORDER_COLOR),
             padding=ft.Padding(16, 16, 16, 16),
-            content=ft.Column(spacing=12, controls=[ft.Text("Resultados", size=18, weight=ft.FontWeight.BOLD), self._result_container]),
+            content=ft.Column(
+                spacing=12,
+                controls=[
+                    ft.Text("Resultados", size=18, weight=ft.FontWeight.BOLD),
+                    self._result_container,
+                    self._steps_button,
+                ],
+            ),
         )
 
         return ft.Container(
@@ -104,13 +122,19 @@ class TransposeView:
             return
         self._result_container.controls.clear()
         self._result_container.controls.append(ft.Text("Propiedades verificadas", weight=ft.FontWeight.BOLD))
+        steps: List[str] = []
         for p in props:
             estado = "Cumple" if p.get("cumple") else "No cumple"
-            self._result_container.controls.append(ft.Text(f"{p.get('propiedad')}: {estado}"))
+            linea = f"{p.get('propiedad')}: {estado}"
+            self._result_container.controls.append(ft.Text(linea))
+            steps.append(linea)
             detalle = p.get("detalle")
             if detalle:
-                self._result_container.controls.append(ft.Text(f"  - {detalle}", size=12, color=TEXT_MUTED))
-        self._result_container.update()
+                detalle_line = f"  - {detalle}"
+                self._result_container.controls.append(ft.Text(detalle_line, size=12, color=TEXT_MUTED))
+                steps.append(detalle_line)
+        self._safe_update(self._result_container)
+        self._set_steps(steps)
 
     def _handle_clear(self) -> None:
         for row in self._a_cells:
@@ -124,6 +148,7 @@ class TransposeView:
         self._result_container.controls.clear()
         self._result_container.controls.append(ft.Text("Introduce A y presiona ‘Calcular A^T’.", color=TEXT_MUTED))
         self._safe_update(self._result_container)
+        self._set_steps([])
 
     def _render_op(self, res: ops.MatrixOpResult) -> None:
         self._result_container.controls.clear()
@@ -133,6 +158,7 @@ class TransposeView:
         self._result_container.controls.append(ft.Text("Resultado A^T", weight=ft.FontWeight.W_600))
         self._result_container.controls.append(self._render_matrix(res.result))
         self._safe_update(self._result_container)
+        self._set_steps(res.steps)
 
     def _render_matrix(self, M: List[List[Fraction]]) -> ft.Control:
         col = ft.Column(spacing=4)
@@ -202,9 +228,47 @@ class TransposeView:
     def alpha_text(self) -> str:
         return self._alpha_text
 
+    def _show_error(self, message: str) -> None:
+        self._result_container.controls.clear()
+        self._result_container.controls.append(ft.Text(f"Error: {message}", color=TEXT_MUTED))
+        self._safe_update(self._result_container)
+        self._set_steps([])
+
     def _safe_update(self, control: ft.Control | None) -> None:
         try:
             if control and control.page:
                 control.update()
         except AssertionError:
             pass
+
+    def _set_steps(self, steps: List[str]) -> None:
+        self._last_steps = steps
+        if self._steps_button:
+            self._steps_button.visible = bool(steps)
+            self._safe_update(self._steps_button)
+
+    def _show_steps_dialog(self, _event=None) -> None:
+        if not self._last_steps or not self._page:
+            return
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Pasos"),
+            content=ft.Container(
+                width=420,
+                content=ft.Column(controls=[ft.Text(line) for line in self._last_steps], scroll=ft.ScrollMode.AUTO),
+            ),
+            actions=[ft.TextButton("Cerrar", on_click=lambda e, dlg=dialog: self._close_dialog(dlg))],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        try:
+            self._page.open(dialog)
+        except AttributeError:
+            dialog.open = True
+            dialog.update()
+
+    def _close_dialog(self, dialog: ft.AlertDialog) -> None:
+        try:
+            self._page.close(dialog)
+        except AttributeError:
+            dialog.open = False
+            dialog.update()

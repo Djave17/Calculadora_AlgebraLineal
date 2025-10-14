@@ -253,12 +253,12 @@ class MainShell:
 
     def _ensure_matrix_ops_view(self) -> MatrixOpsView:
         if self._matrix_ops_view is None:
-            self._matrix_ops_view = MatrixOpsView()
+            self._matrix_ops_view = MatrixOpsView(self.page)
         return self._matrix_ops_view
 
     def _ensure_transpose_view(self) -> TransposeView:
         if self._transpose_view is None:
-            self._transpose_view = TransposeView()
+            self._transpose_view = TransposeView(self.page)
         return self._transpose_view
 
     def _ensure_matrix_identities_view(self) -> MatrixIdentitiesView:

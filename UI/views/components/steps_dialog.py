@@ -63,7 +63,7 @@ def show_steps_dialog(
         actions=[
             ft.TextButton(
                 "Cerrar",
-                on_click=lambda e: _close_dialog(page),
+                on_click=lambda e: _close_dialog(page, dialog),
                 style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
             )
         ],
@@ -71,15 +71,19 @@ def show_steps_dialog(
         shape=ft.RoundedRectangleBorder(radius=18),
     )
 
-    page.dialog = dialog
-    dialog.open = True
-    page.update()
+    try:
+        page.open(dialog)
+    except AttributeError:
+        dialog.open = True
+        dialog.update()
 
 
-def _close_dialog(page: ft.Page) -> None:
-    if page.dialog:
-        page.dialog.open = False
-        page.update()
+def _close_dialog(page: ft.Page, dialog: ft.AlertDialog) -> None:
+    try:
+        page.close(dialog)
+    except AttributeError:
+        dialog.open = False
+        dialog.update()
 
 
 def _build_step_card(step: StepVM) -> ft.Control:
