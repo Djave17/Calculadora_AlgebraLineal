@@ -42,18 +42,11 @@ class LeftMethodsMenu:
             scroll=ft.ScrollMode.AUTO,
         )
 
-        brand = ft.Container(
-            width=64,
-            height=64,
-            border_radius=18,
-            bgcolor="#fff0ef",
-            alignment=ft.alignment.center,
-            content=ft.Image(
-                src="matrix-logo.png",
-                width=52,
-                height=52,
-                fit=ft.ImageFit.CONTAIN,
-            ),
+        brand = ft.Image(
+            src="matrix-logo.png",
+            width=72,
+            height=72,
+            fit=ft.ImageFit.CONTAIN,
         )
 
         header = ft.Column(
@@ -72,7 +65,10 @@ class LeftMethodsMenu:
                 ),
             ],
         )
-        content.controls.extend([ft.Container(content=brand, alignment=ft.alignment.center), header])
+        content.controls.extend([
+            ft.Container(content=brand, alignment=ft.alignment.center),
+            header,
+        ])
 
         self._items.clear()
         for category in self._categories:

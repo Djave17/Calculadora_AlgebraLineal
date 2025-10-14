@@ -151,13 +151,22 @@ class MainShell:
         if match is None:
             return
         category, method = match
+        previous_category = self.active_category
+        previous_method = self.active_method
         try:
             self.active_category = category
             self.active_method = method
             self._activate_method(method)
+            if self._left_menu:
+                self._left_menu.set_active_method(method.id)
         except Exception as exc:  # pragma: no cover - seguridad en UI
             logging.getLogger(__name__).exception("Error changing method to %s", method.id)
             self._show_snackbar(f"Error al activar '{method.label}': {exc}", error=True)
+            # revertir selección visual si algo falla
+            self.active_category = previous_category
+            self.active_method = previous_method
+            if self._left_menu and previous_method:
+                self._left_menu.set_active_method(previous_method.id)
 
     def _handle_dimensions_change(self, rows: int, cols: int) -> None:
         if self.active_method.view_type != "matrix_solver":
@@ -266,9 +275,6 @@ class MainShell:
         return self._mer_view
 
     def _activate_method(self, method: MethodInfo) -> None:
-        if self._left_menu:
-            self._left_menu.set_active_method(method.id)
-
         # Conmutar entre tipos de vista de forma segura y sin variables no definidas
         if method.view_type == "matrix_solver":
             vm, editor = self._ensure_matrix_editor(method)
@@ -361,6 +367,9 @@ class MainShell:
             if self._config_container:
                 self._config_container.visible = False
                 self._safe_update(self._config_container)
+
+        if self._left_menu:
+            self._left_menu.set_active_method(method.id)
 
     def _safe_update(self, control: Optional[ft.Control]) -> None:
         try:

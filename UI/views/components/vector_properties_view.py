@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from fractions import Fraction
 
 import flet as ft
 from flet import Colors as colors
@@ -139,14 +140,18 @@ class VectorPropertiesView:
         if suma:
             self._result_container.controls.append(ft.Text("Suma u + v", weight=ft.FontWeight.BOLD))
             self._result_container.controls.extend(ft.Text(line) for line in suma.get("pasos", []))
-            self._result_container.controls.append(ft.Text(f"Resultado: {suma.get('resultado')}"))
+            self._result_container.controls.append(
+                ft.Text(f"Resultado: {self._format_list(suma.get('resultado'))}")
+            )
 
         producto = data.get("producto_escalar")
         if producto:
             self._result_container.controls.append(ft.Divider())
             self._result_container.controls.append(ft.Text("Producto por escalar", weight=ft.FontWeight.BOLD))
             self._result_container.controls.extend(ft.Text(line) for line in producto.get("pasos", []))
-            self._result_container.controls.append(ft.Text(f"Resultado: {producto.get('resultado')}"))
+            self._result_container.controls.append(
+                ft.Text(f"Resultado: {self._format_list(producto.get('resultado'))}")
+            )
 
         propiedades = data.get("propiedades", [])
         if propiedades:
@@ -201,6 +206,18 @@ class VectorPropertiesView:
 
     def _vector_text(self, fields: list[ft.TextField]) -> str:
         return ",".join((field.value or "0") for field in fields)
+
+    def _format_list(self, values: Optional[list]) -> str:
+        if not values:
+            return "[]"
+        formatted = []
+        for value in values:
+            try:
+                frac = Fraction(value)
+                formatted.append(f"{frac.numerator}/{frac.denominator}" if frac.denominator != 1 else f"{frac.numerator}")
+            except Exception:
+                formatted.append(str(value))
+        return "[" + ", ".join(formatted) + "]"
 
     def _build_vector_cards(self) -> None:
         def ensure_fields(fields: list[ft.TextField]) -> list[ft.TextField]:
