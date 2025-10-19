@@ -40,9 +40,9 @@ class LinearAlgebraViewModel:
 
         suma = u + v
         suma_pasos = [
-            f"u = {list(u.componentes)}",
-            f"v = {list(v.componentes)}",
-            f"u + v = {list(suma.componentes)}",
+            f"u = {self._format_vector(u)}",
+            f"v = {self._format_vector(v)}",
+            f"u + v = {self._format_vector(suma)}",
         ]
 
         escalar_resultado = None
@@ -50,10 +50,10 @@ class LinearAlgebraViewModel:
             producto = u.scale(alpha)
             escalar_resultado = {
                 "alpha": str(alpha),
-                "resultado": [str(c) for c in producto.componentes],
+                "resultado": [self._format_fraction(c) for c in producto.componentes],
                 "pasos": [
                     f"α = {alpha}",
-                    f"α · u = {list(producto.componentes)}",
+                    f"α · u = {self._format_vector(producto)}",
                 ],
             }
 
@@ -74,7 +74,7 @@ class LinearAlgebraViewModel:
 
         return {
             "suma": {
-                "resultado": [str(c) for c in suma.componentes],
+                "resultado": [self._format_fraction(c) for c in suma.componentes],
                 "pasos": suma_pasos,
             },
             "producto_escalar": escalar_resultado,
@@ -190,9 +190,18 @@ class LinearAlgebraViewModel:
 
     def _formatear_matriz(self, datos: Sequence[Sequence[Fraction]]) -> List[str]:
         return [
-            "[" + ", ".join(str(elem) for elem in fila) + "]"
+            "[" + ", ".join(self._format_fraction(elem) for elem in fila) + "]"
             for fila in datos
         ]
+
+    @staticmethod
+    def _format_vector(vector: vectores.Vector) -> str:
+        return "[" + ", ".join(LinearAlgebraViewModel._format_fraction(value) for value in vector.componentes) + "]"
+
+    @staticmethod
+    def _format_fraction(value: Fraction) -> str:
+        value = Fraction(value)
+        return f"{value.numerator}/{value.denominator}" if value.denominator != 1 else f"{value.numerator}"
 
     def _renderizar_historial(self, pasos) -> List[str]:
         lineas: List[str] = []

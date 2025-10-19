@@ -93,8 +93,8 @@ def check_conmutativa(u: Vector, v: Vector) -> Tuple[bool, List[str]]:
     suma_vu = v + u
     cumplimiento = suma_uv == suma_vu
     pasos = [
-        f"u + v = {list(suma_uv.componentes)}",
-        f"v + u = {list(suma_vu.componentes)}",
+        f"u + v = { _format_vector(suma_uv) }",
+        f"v + u = { _format_vector(suma_vu) }",
         "Comparación componente a componente realizada.",
     ]
     return cumplimiento, pasos
@@ -107,8 +107,8 @@ def check_asociativa(u: Vector, v: Vector, w: Vector) -> Tuple[bool, List[str]]:
     derecha = u + (v + w)
     cumplimiento = izquierda == derecha
     pasos = [
-        f"(u + v) + w = {list(izquierda.componentes)}",
-        f"u + (v + w) = {list(derecha.componentes)}",
+        f"(u + v) + w = { _format_vector(izquierda) }",
+        f"u + (v + w) = { _format_vector(derecha) }",
     ]
     return cumplimiento, pasos
 
@@ -118,8 +118,8 @@ def check_neutro(u: Vector) -> Tuple[bool, List[str]]:
     suma = u + cero
     cumplimiento = suma == u
     pasos = [
-        f"Vector cero = {list(cero.componentes)}",
-        f"u + 0 = {list(suma.componentes)}",
+        f"Vector cero = { _format_vector(cero) }",
+        f"u + 0 = { _format_vector(suma) }",
     ]
     return cumplimiento, pasos
 
@@ -129,7 +129,16 @@ def check_inverso(u: Vector) -> Tuple[bool, List[str]]:
     suma = u + opuesto
     cumplimiento = suma.is_zero()
     pasos = [
-        f"-u = {list(opuesto.componentes)}",
-        f"u + (-u) = {list(suma.componentes)}",
+        f"-u = { _format_vector(opuesto) }",
+        f"u + (-u) = { _format_vector(suma) }",
     ]
     return cumplimiento, pasos
+
+
+def _format_vector(vector: Vector) -> str:
+    return "[" + ", ".join(_format_fraction(value) for value in vector.componentes) + "]"
+
+
+def _format_fraction(value: Fraction) -> str:
+    value = Fraction(value)
+    return f"{value.numerator}/{value.denominator}" if value.denominator != 1 else f"{value.numerator}"
