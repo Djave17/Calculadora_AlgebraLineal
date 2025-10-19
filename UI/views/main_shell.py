@@ -329,8 +329,8 @@ class MainShell:
             view = self._ensure_transpose_view()
             config = self._ensure_transpose_config(method)
             config.set_method(method)
-            rows, cols = view.parameters()
-            config.set_values(rows, cols, view.alpha_text())
+            rows_a, cols_a, rows_b, cols_b = view.parameters()
+            config.set_values(rows_a, cols_a, rows_b, cols_b, view.alpha_text())
             if self._center_container:
                 self._center_container.content = view.view
                 self._safe_update(self._center_container)
@@ -408,13 +408,13 @@ class MainShell:
             ra, ca, rb, cb = view.dimensions()
             self._matrix_ops_config.set_values(ra, ca, rb, cb, view.alpha_text())
 
-    def _handle_transpose_config_change(self, rows: int, cols: int, alpha: str) -> None:
+    def _handle_transpose_config_change(self, rows_a: int, cols_a: int, rows_b: int, cols_b: int, alpha: str) -> None:
         view = self._ensure_transpose_view()
-        view.set_dimensions(rows, cols)
+        view.set_parameters(rows_a, cols_a, rows_b, cols_b)
         view.set_alpha(alpha)
         if self._transpose_config_panel:
-            r, c = view.parameters()
-            self._transpose_config_panel.set_values(r, c, view.alpha_text())
+            ra, ca, rb, cb = view.parameters()
+            self._transpose_config_panel.set_values(ra, ca, rb, cb, view.alpha_text())
 
     def _handle_vector_properties_dimension_change(self, dimension: int) -> None:
         view = self._ensure_vector_properties_view()

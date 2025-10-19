@@ -250,22 +250,26 @@ class TransposeConfigPanel(_BaseConfigPanel):
     MIN = 1
     MAX = 8
 
-    def __init__(self, method: MethodInfo, on_change: Callable[[int, int, str], None]) -> None:
+    def __init__(self, method: MethodInfo, on_change: Callable[[int, int, int, int, str], None]) -> None:
         super().__init__(method)
-        self._rows = 2
-        self._cols = 2
+        self._rows_a = 2
+        self._cols_a = 2
+        self._rows_b = 2
+        self._cols_b = 2
         self._alpha = ""
         self._on_change = on_change
         self._updating = False
-        self._rows_field: ft.TextField | None = None
-        self._cols_field: ft.TextField | None = None
+        self._rows_a_field: ft.TextField | None = None
+        self._cols_a_field: ft.TextField | None = None
+        self._rows_b_field: ft.TextField | None = None
+        self._cols_b_field: ft.TextField | None = None
         self._alpha_field: ft.TextField | None = None
 
     def _build(self) -> ft.Container:
         header = self._header()
-        self._rows_field = ft.TextField(
-            label="Filas",
-            value=str(self._rows),
+        self._rows_a_field = ft.TextField(
+            label="Filas A",
+            value=str(self._rows_a),
             text_align=ft.TextAlign.CENTER,
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -274,9 +278,31 @@ class TransposeConfigPanel(_BaseConfigPanel):
             on_blur=self._handle_change,
             on_submit=self._handle_change,
         )
-        self._cols_field = ft.TextField(
-            label="Columnas",
-            value=str(self._cols),
+        self._cols_a_field = ft.TextField(
+            label="Columnas A",
+            value=str(self._cols_a),
+            text_align=ft.TextAlign.CENTER,
+            border_radius=12,
+            border_color=PRIMARY_COLOR,
+            focused_border_color=SECONDARY_COLOR,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            on_blur=self._handle_change,
+            on_submit=self._handle_change,
+        )
+        self._rows_b_field = ft.TextField(
+            label="Filas B",
+            value=str(self._rows_b),
+            text_align=ft.TextAlign.CENTER,
+            border_radius=12,
+            border_color=PRIMARY_COLOR,
+            focused_border_color=SECONDARY_COLOR,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            on_blur=self._handle_change,
+            on_submit=self._handle_change,
+        )
+        self._cols_b_field = ft.TextField(
+            label="Columnas B",
+            value=str(self._cols_b),
             text_align=ft.TextAlign.CENTER,
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -299,7 +325,14 @@ class TransposeConfigPanel(_BaseConfigPanel):
 
         body = ft.Column(
             spacing=12,
-            controls=[header, self._rows_field, self._cols_field, self._alpha_field],
+            controls=[
+                header,
+                self._rows_a_field,
+                self._cols_a_field,
+                self._rows_b_field,
+                self._cols_b_field,
+                self._alpha_field,
+            ],
         )
 
         return ft.Container(
@@ -313,13 +346,21 @@ class TransposeConfigPanel(_BaseConfigPanel):
     def _handle_change(self, _event) -> None:
         if self._updating:
             return
-        rows = self._parse_int(self._rows_field, self._rows)
-        cols = self._parse_int(self._cols_field, self._cols)
+        rows_a = self._parse_int(self._rows_a_field, self._rows_a)
+        cols_a = self._parse_int(self._cols_a_field, self._cols_a)
+        rows_b = self._parse_int(self._rows_b_field, self._rows_b)
+        cols_b = self._parse_int(self._cols_b_field, self._cols_b)
         alpha = (self._alpha_field.value if self._alpha_field else self._alpha) or ""
-        changed = (rows, cols, alpha) != (self._rows, self._cols, self._alpha)
-        self.set_values(rows, cols, alpha)
+        changed = (rows_a, cols_a, rows_b, cols_b, alpha) != (
+            self._rows_a,
+            self._cols_a,
+            self._rows_b,
+            self._cols_b,
+            self._alpha,
+        )
+        self.set_values(rows_a, cols_a, rows_b, cols_b, alpha)
         if changed and self._on_change:
-            self._on_change(self._rows, self._cols, self._alpha)
+            self._on_change(self._rows_a, self._cols_a, self._rows_b, self._cols_b, self._alpha)
 
     def _parse_int(self, field: ft.TextField | None, fallback: int) -> int:
         if field is None:
@@ -330,24 +371,32 @@ class TransposeConfigPanel(_BaseConfigPanel):
             value = fallback
         return max(self.MIN, min(self.MAX, value))
 
-    def set_values(self, rows: int, cols: int, alpha: str) -> None:
-        self._rows = rows
-        self._cols = cols
-        self._alpha = alpha or ""
+    def set_values(self, rows_a: int, cols_a: int, rows_b: int, cols_b: int, alpha: str) -> None:
+        self._rows_a = rows_a
+        self._cols_a = cols_a
+        self._rows_b = rows_b
+        self._cols_b = cols_b
+        self._alpha = (alpha or "").strip()
         self._updating = True
-        if self._rows_field:
-            self._rows_field.value = str(rows)
-            self._safe_update(self._rows_field)
-        if self._cols_field:
-            self._cols_field.value = str(cols)
-            self._safe_update(self._cols_field)
+        if self._rows_a_field:
+            self._rows_a_field.value = str(rows_a)
+            self._safe_update(self._rows_a_field)
+        if self._cols_a_field:
+            self._cols_a_field.value = str(cols_a)
+            self._safe_update(self._cols_a_field)
+        if self._rows_b_field:
+            self._rows_b_field.value = str(rows_b)
+            self._safe_update(self._rows_b_field)
+        if self._cols_b_field:
+            self._cols_b_field.value = str(cols_b)
+            self._safe_update(self._cols_b_field)
         if self._alpha_field:
             self._alpha_field.value = self._alpha
             self._safe_update(self._alpha_field)
         self._updating = False
 
-    def values(self) -> tuple[int, int, str]:
-        return self._rows, self._cols, self._alpha
+    def values(self) -> tuple[int, int, int, int, str]:
+        return self._rows_a, self._cols_a, self._rows_b, self._cols_b, self._alpha
 
 
 class MatrixIdentitiesConfigPanel(_BaseConfigPanel):

@@ -10,6 +10,8 @@ from ...helpers import parse_matrix
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
 from ViewModels import matrix_ops_vm as ops
 
+ALPHA = "\u03b1"
+
 
 class MatrixOpsView:
     """Vista para operaciones elementales con matrices y verificación de propiedades.
@@ -95,10 +97,14 @@ class MatrixOpsView:
         operations = [
             ("add", "A + B"),
             ("sub", "A - B"),
-            ("scalar", "α · A"),
-            ("mul", "A · B"),
+            ("scalar", f"{ALPHA} * A"),
+            ("mul", "A * B"),
             ("at", "A^T"),
             ("bt", "B^T"),
+            ("sum_t", "(A + B)^T"),
+            ("diff_t", "(A - B)^T"),
+            ("scalar_t", f"({ALPHA} * A)^T"),
+            ("prod_t", "(A * B)^T"),
             ("verify", "Verificar propiedades"),
         ]
         self._operation_dropdown = ft.Dropdown(
@@ -182,7 +188,7 @@ class MatrixOpsView:
             A = self._collect_matrix(self._a_cells)
             alpha = self._parse_alpha()
             if alpha is None:
-                raise ValueError("Ingresa un valor para α (por ejemplo 2, -1/3).")
+                raise ValueError(f"Ingresa un valor para {ALPHA} (por ejemplo 2, -1/3).")
             res = ops.scalar_mult(alpha, A)
         except Exception as exc:
             self._show_error(str(exc))
@@ -208,6 +214,126 @@ class MatrixOpsView:
             self._show_error(str(exc))
             return
         self._render_op(res)
+
+    def _run_transpose_sum(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            B = self._collect_matrix(self._b_cells)
+            sum_res = ops.add(A, B)
+            t_sum = ops.transpose(sum_res.result)
+            tA = ops.transpose(A)
+            tB = ops.transpose(B)
+            sum_transposes = ops.add(tA.result, tB.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = t_sum.result == sum_transposes.result
+        self._render_transpose_property(
+            "(A + B)^T",
+            [
+                ("Pasos de A + B", sum_res.steps),
+                ("Pasos de la traspuesta", t_sum.steps),
+                ("Pasos de A^T + B^T", sum_transposes.steps),
+            ],
+            [
+                ("(A + B)^T", t_sum.result),
+                ("A^T", tA.result),
+                ("B^T", tB.result),
+                ("A^T + B^T", sum_transposes.result),
+            ],
+            holds,
+            "(A + B)^T = A^T + B^T",
+        )
+
+    def _run_transpose_diff(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            B = self._collect_matrix(self._b_cells)
+            diff_res = ops.subtract(A, B)
+            t_diff = ops.transpose(diff_res.result)
+            tA = ops.transpose(A)
+            tB = ops.transpose(B)
+            diff_transposes = ops.subtract(tA.result, tB.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = t_diff.result == diff_transposes.result
+        self._render_transpose_property(
+            "(A - B)^T",
+            [
+                ("Pasos de A - B", diff_res.steps),
+                ("Pasos de la traspuesta", t_diff.steps),
+                ("Pasos de A^T - B^T", diff_transposes.steps),
+            ],
+            [
+                ("(A - B)^T", t_diff.result),
+                ("A^T", tA.result),
+                ("B^T", tB.result),
+                ("A^T - B^T", diff_transposes.result),
+            ],
+            holds,
+            "(A - B)^T = A^T - B^T",
+        )
+
+    def _run_transpose_scalar(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            alpha = self._parse_alpha()
+            if alpha is None:
+                raise ValueError(f"Define {ALPHA} para evaluar la propiedad.")
+            scalar_res = ops.scalar_mult(alpha, A)
+            t_scalar = ops.transpose(scalar_res.result)
+            tA = ops.transpose(A)
+            scalar_transpose = ops.scalar_mult(alpha, tA.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = t_scalar.result == scalar_transpose.result
+        self._render_transpose_property(
+            f"({ALPHA} * A)^T",
+            [
+                (f"Pasos de {ALPHA} * A", scalar_res.steps),
+                ("Pasos de la traspuesta", t_scalar.steps),
+                (f"Pasos de {ALPHA} * A^T", scalar_transpose.steps),
+            ],
+            [
+                (f"({ALPHA} * A)^T", t_scalar.result),
+                ("A^T", tA.result),
+                (f"{ALPHA} * A^T", scalar_transpose.result),
+            ],
+            holds,
+            f"({ALPHA} * A)^T = {ALPHA} * A^T",
+        )
+
+    def _run_transpose_product(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            B = self._collect_matrix(self._b_cells)
+            product_res = ops.multiply(A, B)
+            t_product = ops.transpose(product_res.result)
+            tA = ops.transpose(A)
+            tB = ops.transpose(B)
+            reversed_product = ops.multiply(tB.result, tA.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = t_product.result == reversed_product.result
+        self._render_transpose_property(
+            "(A * B)^T",
+            [
+                ("Pasos de A * B", product_res.steps),
+                ("Pasos de la traspuesta", t_product.steps),
+                ("Pasos de B^T * A^T", reversed_product.steps),
+            ],
+            [
+                ("(A * B)^T", t_product.result),
+                ("B^T", tB.result),
+                ("A^T", tA.result),
+                ("B^T * A^T", reversed_product.result),
+            ],
+            holds,
+            "(A * B)^T = B^T * A^T",
+        )
 
     def _run_verify(self) -> None:
         try:
@@ -243,6 +369,10 @@ class MatrixOpsView:
             "mul": self._run_mul,
             "at": lambda: self._run_transpose("A"),
             "bt": lambda: self._run_transpose("B"),
+            "sum_t": self._run_transpose_sum,
+            "diff_t": self._run_transpose_diff,
+            "scalar_t": self._run_transpose_scalar,
+            "prod_t": self._run_transpose_product,
             "verify": self._run_verify,
         }
         action = mapping.get(op)
@@ -250,6 +380,7 @@ class MatrixOpsView:
             self._show_error("Selecciona una operación válida.")
             return
         action()
+
 
     # --------------- presentación ---------------
     def _render_placeholder(self) -> None:
@@ -268,6 +399,33 @@ class MatrixOpsView:
         self._result_container.controls.append(self._render_matrix(res.result))
         self._safe_update(self._result_container)
         self._set_steps(res.steps)
+
+    def _render_transpose_property(
+        self,
+        title: str,
+        step_sections: List[tuple[str, List[str]]],
+        matrices: List[tuple[str, List[List[Fraction]]]],
+        holds: bool,
+        message: str,
+    ) -> None:
+        self._result_container.controls.clear()
+        self._result_container.controls.append(ft.Text(f"Operación: {title}", weight=ft.FontWeight.BOLD))
+        log: List[str] = []
+        for heading, steps in step_sections:
+            self._result_container.controls.append(ft.Text(heading, weight=ft.FontWeight.W_600))
+            log.append(heading)
+            for step in steps:
+                self._result_container.controls.append(ft.Text(step, size=12))
+                log.append(f"  {step}")
+        for heading, matrix in matrices:
+            self._result_container.controls.append(ft.Text(heading, weight=ft.FontWeight.W_600))
+            self._result_container.controls.append(self._render_matrix(matrix))
+        status_text = message if holds else f"No se cumple: {message}"
+        status_color = colors.GREEN_600 if holds else colors.RED_400
+        self._result_container.controls.append(ft.Text(status_text, weight=ft.FontWeight.W_600, color=status_color))
+        self._safe_update(self._result_container)
+        log.append(status_text)
+        self._set_steps(log)
 
     def _render_matrix(self, M: List[List[Fraction]]) -> ft.Control:
         col = ft.Column(spacing=4)
@@ -296,7 +454,7 @@ class MatrixOpsView:
         try:
             return Fraction(txt)
         except ValueError as exc:
-            raise ValueError(f"α inválido: '{txt}'") from exc
+            raise ValueError(f"{ALPHA} inválido: '{txt}'") from exc
 
     def _collect_matrix(self, cells: List[List[ft.TextField]]) -> List[List[Fraction]]:
         raw = [[cell.value or "0" for cell in row] for row in cells]
@@ -325,9 +483,9 @@ class MatrixOpsView:
         self._update_info_label()
 
     def _update_info_label(self) -> None:
-        alpha_display = self._alpha_text.strip() or "—"
+        alpha_display = self._alpha_text.strip() or "sin definir"
         self._info_label.value = (
-            f"Dimensiones: A = {self._rows_a}×{self._cols_a}, B = {self._rows_b}×{self._cols_b} | α = {alpha_display}"
+            f"Dimensiones: A = {self._rows_a}x{self._cols_a}, B = {self._rows_b}x{self._cols_b} | {ALPHA} = {alpha_display}"
         )
         self._safe_update(self._info_label)
 
