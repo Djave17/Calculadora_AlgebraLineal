@@ -12,6 +12,7 @@ class MethodInfo:
     available: bool
     description: str
     category: str
+    icon_text: str | None = None
     view_type: str = "matrix_solver"
     analysis_context: Optional[str] = None
     force_homogeneous: bool = False
@@ -112,6 +113,19 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 ),
                 category="Álgebra matricial",
                 view_type="matrix_transpose",
+                shows_config_panel=False,
+            ),
+            MethodInfo(
+                id="matrix_inverse",
+                label="Inversa de matriz",
+                icon="AUTO_GRAPH",
+                available=True,
+                description=(
+                    "Calcula A^-1 mediante Gauss-Jordan, mostrando [A | I] → [I | A^-1] y verificaciones teóricas."
+                ),
+                category="Álgebra matricial",
+                icon_text="A⁻¹",
+                view_type="matrix_inverse",
                 shows_config_panel=False,
             ),
         ),

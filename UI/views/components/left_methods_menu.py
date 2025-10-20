@@ -122,17 +122,37 @@ class MethodButton:
         self.method = method
         self._is_active = is_active
         self._on_click = on_click
-        self._icon_control: Optional[ft.Icon] = None
+        self._icon_control: Optional[ft.Control] = None
+        self._icon_text_control: Optional[ft.Text] = None
         self._label_control: Optional[ft.Text] = None
         self._container: Optional[ft.Container] = None
         self._control = self._build()
 
     def _build(self) -> ft.Control:
-        icon = ft.Icon(
-            name=getattr(icons, self.method.icon, icons.CHECK),
-            color=colors.WHITE if self._is_active else PRIMARY_COLOR,
-            size=20,
-        )
+        if self.method.icon_text:
+            text_color = colors.WHITE if self._is_active else PRIMARY_COLOR
+            icon_label = ft.Text(
+                self.method.icon_text,
+                size=14,
+                weight=ft.FontWeight.BOLD,
+                color=text_color,
+            )
+            icon = ft.Container(
+                width=36,
+                height=36,
+                alignment=ft.alignment.center,
+                border_radius=12,
+                bgcolor=PRIMARY_COLOR if self._is_active else None,
+                border=ft.border.all(1, color=PRIMARY_COLOR),
+                content=icon_label,
+            )
+            self._icon_text_control = icon_label
+        else:
+            icon = ft.Icon(
+                name=getattr(icons, self.method.icon, icons.CHECK),
+                color=colors.WHITE if self._is_active else PRIMARY_COLOR,
+                size=20,
+            )
         label = ft.Text(
             self.method.label,
             color=colors.WHITE if self._is_active else TEXT_DARK,
@@ -169,7 +189,13 @@ class MethodButton:
         )
 
         if not self.method.available:
-            icon.color = TEXT_MUTED
+            if isinstance(icon, ft.Icon):
+                icon.color = TEXT_MUTED
+            else:
+                icon.bgcolor = None
+                icon.border = ft.border.all(1, color=BORDER_COLOR)
+                if self._icon_text_control:
+                    self._icon_text_control.color = TEXT_MUTED
             label.color = TEXT_MUTED
             label.weight = ft.FontWeight.W_500
 
@@ -182,17 +208,29 @@ class MethodButton:
         if not self.method.available:
             active = False
         self._is_active = active
-        if self._icon_control and self._label_control and self._container:
-            self._icon_control.color = (
-                colors.WHITE if active and self.method.available else (PRIMARY_COLOR if self.method.available else TEXT_MUTED)
-            )
+        if self._label_control and self._container:
             self._label_control.color = (
                 colors.WHITE if active and self.method.available else (TEXT_DARK if self.method.available else TEXT_MUTED)
             )
             self._label_control.weight = ft.FontWeight.BOLD if active and self.method.available else ft.FontWeight.W_500
             self._container.bgcolor = PRIMARY_COLOR if active and self.method.available else None
             self._container.border = ft.border.all(1, color=PRIMARY_COLOR if self.method.available else BORDER_COLOR)
-            self._safe_update(self._icon_control)
+            if self.method.icon_text and isinstance(self._icon_control, ft.Container):
+                self._icon_control.bgcolor = PRIMARY_COLOR if active and self.method.available else None
+                self._icon_control.border = ft.border.all(1, color=PRIMARY_COLOR if self.method.available else BORDER_COLOR)
+                if self._icon_text_control:
+                    self._icon_text_control.color = (
+                        colors.WHITE if active and self.method.available else (PRIMARY_COLOR if self.method.available else TEXT_MUTED)
+                    )
+                    self._safe_update(self._icon_text_control)
+                self._safe_update(self._icon_control)
+            elif isinstance(self._icon_control, ft.Icon):
+                self._icon_control.color = (
+                    colors.WHITE if active and self.method.available else (
+                        PRIMARY_COLOR if self.method.available else TEXT_MUTED
+                    )
+                )
+                self._safe_update(self._icon_control)
             self._safe_update(self._label_control)
             self._safe_update(self._container)
 

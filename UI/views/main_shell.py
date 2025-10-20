@@ -19,12 +19,14 @@ from .components import (
     MatrixOpsView,
     TransposeView,
     MatrixIdentitiesView,
+    MatrixInverseView,
 )
 from .components.steps_dialog import show_steps_dialog
 from .components.custom_config_panels import (
     MatrixOpsConfigPanel,
     TransposeConfigPanel,
     VectorPropertiesConfigPanel,
+    MatrixInverseConfigPanel,
 )
 
 
@@ -62,10 +64,12 @@ class MainShell:
         self._matrix_ops_view: Optional[MatrixOpsView] = None
         self._transpose_view: Optional[TransposeView] = None
         self._matrix_identities_view: Optional[MatrixIdentitiesView] = None
+        self._matrix_inverse_view: Optional[MatrixInverseView] = None
 
         self._matrix_ops_config: Optional[MatrixOpsConfigPanel] = None
         self._transpose_config_panel: Optional[TransposeConfigPanel] = None
         self._vector_properties_config: Optional[VectorPropertiesConfigPanel] = None
+        self._matrix_inverse_config: Optional[MatrixInverseConfigPanel] = None
         self._transpose_view: Optional[TransposeView] = None
 
         self._config_panel: Optional[RightConfigPanel] = None
@@ -251,6 +255,11 @@ class MainShell:
             self._vector_properties_view = VectorPropertiesView(self.page, LinearAlgebraViewModel())
         return self._vector_properties_view
 
+    def _ensure_matrix_inverse_view(self) -> MatrixInverseView:
+        if self._matrix_inverse_view is None:
+            self._matrix_inverse_view = MatrixInverseView(self.page)
+        return self._matrix_inverse_view
+
     def _ensure_matrix_ops_view(self) -> MatrixOpsView:
         if self._matrix_ops_view is None:
             self._matrix_ops_view = MatrixOpsView(self.page)
@@ -301,6 +310,20 @@ class MainShell:
             config.set_method(method)
             config.set_alpha(view.alpha_text())
             config.set_dimension(view.dimension())
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "matrix_inverse":
+            view = self._ensure_matrix_inverse_view()
+            config = self._ensure_matrix_inverse_config(method)
+            config.set_method(method)
+            config.set_order(view.order())
             if self._center_container:
                 self._center_container.content = view.view
                 self._safe_update(self._center_container)
@@ -379,6 +402,16 @@ class MainShell:
             pass
 
     # ------------------------------ Config panels ------------------------------
+    def _ensure_matrix_inverse_config(self, method: MethodInfo) -> MatrixInverseConfigPanel:
+        if self._matrix_inverse_config is None:
+            self._matrix_inverse_config = MatrixInverseConfigPanel(
+                method,
+                self._handle_matrix_inverse_order_change,
+                self._handle_matrix_inverse_resolve,
+                self._handle_matrix_inverse_clear,
+            )
+        return self._matrix_inverse_config
+
     def _ensure_matrix_ops_config(self, method: MethodInfo) -> MatrixOpsConfigPanel:
         if self._matrix_ops_config is None:
             self._matrix_ops_config = MatrixOpsConfigPanel(method, self._handle_matrix_ops_config_change)
@@ -399,6 +432,22 @@ class MainShell:
                 self._handle_vector_properties_clear,
             )
         return self._vector_properties_config
+
+    def _handle_matrix_inverse_order_change(self, order: int) -> None:
+        view = self._ensure_matrix_inverse_view()
+        view.set_order(order)
+        if self._matrix_inverse_config:
+            self._matrix_inverse_config.set_order(view.order())
+
+    def _handle_matrix_inverse_resolve(self) -> None:
+        view = self._ensure_matrix_inverse_view()
+        view.resolve()
+
+    def _handle_matrix_inverse_clear(self) -> None:
+        view = self._ensure_matrix_inverse_view()
+        view.clear_fields()
+        if self._matrix_inverse_config:
+            self._matrix_inverse_config.set_order(view.order())
 
     def _handle_matrix_ops_config_change(self, rows_a: int, cols_a: int, rows_b: int, cols_b: int, alpha: str) -> None:
         view = self._ensure_matrix_ops_view()

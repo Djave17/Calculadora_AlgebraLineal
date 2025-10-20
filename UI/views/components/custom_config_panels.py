@@ -246,6 +246,89 @@ class MatrixOpsConfigPanel(_BaseConfigPanel):
         return self._rows_a, self._cols_a, self._rows_b, self._cols_b, self._alpha
 
 
+
+
+class MatrixInverseConfigPanel(_BaseConfigPanel):
+    MIN_ORDER = 2
+    MAX_ORDER = 8
+
+    def __init__(
+        self,
+        method: MethodInfo,
+        on_order_change: Callable[[int], None],
+        on_resolve: Callable[[], None],
+        on_clear: Callable[[], None],
+    ) -> None:
+        super().__init__(method)
+        self._order = 3
+        self._on_order_change = on_order_change
+        self._on_resolve = on_resolve
+        self._on_clear = on_clear
+        self._order_field: ft.TextField | None = None
+        self._updating = False
+
+    def _build(self) -> ft.Container:
+        header = self._header()
+        self._order_field = ft.TextField(
+            label="Orden n",
+            value=str(self._order),
+            text_align=ft.TextAlign.CENTER,
+            border_radius=12,
+            border_color=PRIMARY_COLOR,
+            focused_border_color=SECONDARY_COLOR,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            on_blur=self._handle_order_change,
+            on_submit=self._handle_order_change,
+        )
+        actions = ft.Column(
+            spacing=10,
+            controls=[
+                ft.FilledButton("Calcular inversa", on_click=lambda _: self._on_resolve(), style=RED_FILLED_STYLE),
+                ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear(), style=RED_OUTLINED_STYLE),
+            ],
+        )
+
+        content = ft.Column(
+            spacing=14,
+            controls=[header, self._order_field, actions],
+        )
+
+        return ft.Container(
+            bgcolor=SURFACE_COLOR,
+            border=ft.border.all(1, color=BORDER_COLOR),
+            border_radius=18,
+            padding=ft.Padding(20, 20, 20, 20),
+            content=content,
+        )
+
+    def _handle_order_change(self, _event) -> None:
+        if self._updating:
+            return
+        if self._order_field:
+            value = self._parse(self._order_field.value)
+            changed = value != self._order
+            self.set_order(value)
+            if changed and self._on_order_change:
+                self._on_order_change(value)
+
+    def _parse(self, value: str | None) -> int:
+        try:
+            parsed = int(value or self._order)
+        except (TypeError, ValueError):
+            parsed = self._order
+        return max(self.MIN_ORDER, min(self.MAX_ORDER, parsed))
+
+    def set_order(self, order: int) -> None:
+        self._order = max(self.MIN_ORDER, min(self.MAX_ORDER, order))
+        self._updating = True
+        if self._order_field:
+            self._order_field.value = str(self._order)
+            self._safe_update(self._order_field)
+        self._updating = False
+
+    def order(self) -> int:
+        return self._order
+
 class TransposeConfigPanel(_BaseConfigPanel):
     MIN = 1
     MAX = 8

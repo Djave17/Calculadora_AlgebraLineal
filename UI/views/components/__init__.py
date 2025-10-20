@@ -9,11 +9,13 @@ from .walkthrough import WalkthroughView
 from .matrix_ops_view import MatrixOpsView
 from .transpose_view import TransposeView
 from .matrix_identities_view import MatrixIdentitiesView
+from .matrix_inverse_view import MatrixInverseView
 from .custom_config_panels import (
     MatrixOpsConfigPanel,
     TransposeConfigPanel,
     VectorPropertiesConfigPanel,
     MatrixIdentitiesConfigPanel,
+    MatrixInverseConfigPanel,
 )
 
 __all__ = [
@@ -26,8 +28,10 @@ __all__ = [
     "MatrixOpsView",
     "TransposeView",
     "MatrixIdentitiesView",
+    "MatrixInverseView",
     "MatrixOpsConfigPanel",
     "TransposeConfigPanel",
     "VectorPropertiesConfigPanel",
     "MatrixIdentitiesConfigPanel",
+    "MatrixInverseConfigPanel",
 ]
