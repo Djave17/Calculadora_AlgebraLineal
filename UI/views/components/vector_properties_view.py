@@ -25,8 +25,6 @@ class VectorPropertiesView:
         self._alpha_text: str = ""
         self._alpha_label = ft.Text("α = —", color=colors.GREY_600)
         self._steps_button: ft.TextButton | None = None
-        self._last_steps: List[str] = []
-        self._steps_button: ft.TextButton | None = None
         self._last_steps: list[str] = []
 
         self._u_fields: list[ft.TextField] = []
@@ -319,9 +317,15 @@ class VectorPropertiesView:
                 width=420,
                 content=ft.Column(controls=[ft.Text(line) for line in self._last_steps], scroll=ft.ScrollMode.AUTO),
             ),
-            actions=[ft.TextButton("Cerrar", on_click=lambda e, dlg=dialog: self._close_dialog(dlg))],
             actions_alignment=ft.MainAxisAlignment.END,
         )
+        dialog.actions = [
+            ft.TextButton(
+                "Cerrar",
+                on_click=lambda e: self._close_dialog(dialog),
+                style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+            )
+        ]
         try:
             self._page.open(dialog)
         except AttributeError:

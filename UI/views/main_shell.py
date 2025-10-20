@@ -9,7 +9,8 @@ from ViewModels.resolucion_matriz_vm import MatrixCalculatorViewModel
 
 from ..helpers import clamp
 from ..methods import METHOD_CATEGORIES, MethodCategory, MethodInfo, find_method, first_available_method
-from ..styles import BACKGROUND_COLOR, PANEL_WIDTH, PRIMARY_COLOR, SURFACE_COLOR
+from ..styles import BACKGROUND_COLOR, PRIMARY_COLOR, SURFACE_COLOR
+from ..router import MethodRouter, RouteTarget
 from .components import (
     LeftMethodsMenu,
     MatrixEditor,
@@ -71,10 +72,19 @@ class MainShell:
         self._config_panel: Optional[RightConfigPanel] = None
         self._config_container: Optional[ft.Container] = None
         self._center_container: Optional[ft.Container] = None
+        self._router: Optional[MethodRouter] = None
         self._root: Optional[ft.Column] = None
 
         self._root = self._build()
-        self._activate_method(self.active_method)
+        self._router = MethodRouter(
+            page=self.page,
+            outlet=self._center_container,
+            menu=self._left_menu,
+            config_outlet=self._config_container,
+        )
+        self._register_routes()
+        if self.active_method:
+            self._router.navigate(self.active_method.id)
 
     def _build(self) -> ft.Column:
         self._left_menu = LeftMethodsMenu(
@@ -147,26 +157,9 @@ class MainShell:
         self._safe_update(self._config_container)
 
     def _handle_method_selected(self, method_id: str) -> None:
-        match = find_method(method_id)
-        if match is None:
+        if not self._router or not self.page:
             return
-        category, method = match
-        previous_category = self.active_category
-        previous_method = self.active_method
-        try:
-            self.active_category = category
-            self.active_method = method
-            self._activate_method(method)
-            if self._left_menu:
-                self._left_menu.set_active_method(method.id)
-        except Exception as exc:  # pragma: no cover - seguridad en UI
-            logging.getLogger(__name__).exception("Error changing method to %s", method.id)
-            self._show_snackbar(f"Error al activar '{method.label}': {exc}", error=True)
-            # revertir selección visual si algo falla
-            self.active_category = previous_category
-            self.active_method = previous_method
-            if self._left_menu and previous_method:
-                self._left_menu.set_active_method(previous_method.id)
+        self.page.run_task(self._navigate_to_method, method_id)
 
     def _handle_dimensions_change(self, rows: int, cols: int) -> None:
         if self.active_method.view_type != "matrix_solver":
@@ -274,8 +267,35 @@ class MainShell:
             self._mer_view = MerNotesView()
         return self._mer_view
 
-    def _activate_method(self, method: MethodInfo) -> None:
-        # Conmutar entre tipos de vista de forma segura y sin variables no definidas
+    def _safe_update(self, control: Optional[ft.Control]) -> None:
+        try:
+            if control and control.page:
+                control.update()
+        except AssertionError:
+            pass
+
+    def _register_routes(self) -> None:
+        if not self._router:
+            return
+        self._router.clear()
+        for category in self.categories:
+            for method in category.methods:
+                if not method.available:
+                    continue
+                self._router.register(
+                    method.id,
+                    lambda method_id=method.id: self._build_route(method_id),
+                    view_id=method.id,
+                )
+
+    def _build_route(self, method_id: str) -> RouteTarget:
+        match = find_method(method_id)
+        if match is None:
+            return RouteTarget(view=None, config_view=None, config_visible=False)
+        category, method = match
+        self.active_category = category
+        self.active_method = method
+
         if method.view_type == "matrix_solver":
             vm, editor = self._ensure_matrix_editor(method)
             self.view_model = vm
@@ -284,99 +304,71 @@ class MainShell:
             self._matrix_editor.update_method(method)
             self._matrix_editor.update_method_category(self.active_category.label)
 
-            if self._center_container:
-                self._center_container.content = editor.view
-                self._safe_update(self._center_container)
+            config_view = None
+            visible = self._config_visible
             if self._config_panel:
                 self._config_panel.set_dimensions(vm.rows, vm.cols)
                 self._config_panel.update_method(method)
-            if self._config_container:
-                self._config_container.content = self._config_panel.view
-                self._config_container.visible = self._config_visible
-                self._safe_update(self._config_container)
+                config_view = self._config_panel.view
+                visible = method.shows_config_panel and self._config_visible
+            if not method.shows_config_panel:
+                self._config_visible = False
+            return RouteTarget(view=editor.view, config_view=config_view, config_visible=visible)
 
-        elif method.view_type == "vector_properties":
+        if method.view_type == "vector_properties":
             view = self._ensure_vector_properties_view()
             config = self._ensure_vector_properties_config(method)
             config.set_method(method)
             config.set_alpha(view.alpha_text())
             config.set_dimension(view.dimension())
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.content = config.view
-                self._config_container.visible = True
-                self._config_visible = True
-                self._safe_update(self._config_container)
+            self._config_visible = True
+            return RouteTarget(view=view.view, config_view=config.view, config_visible=True)
 
-        elif method.view_type == "matrix_ops":
+        if method.view_type == "matrix_ops":
             view = self._ensure_matrix_ops_view()
             config = self._ensure_matrix_ops_config(method)
             config.set_method(method)
             rows_a, cols_a, rows_b, cols_b = view.dimensions()
             config.set_values(rows_a, cols_a, rows_b, cols_b, view.alpha_text())
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.content = config.view
-                self._config_container.visible = True
-                self._config_visible = True
-                self._safe_update(self._config_container)
+            self._config_visible = True
+            return RouteTarget(view=view.view, config_view=config.view, config_visible=True)
 
-        elif method.view_type == "matrix_transpose":
+        if method.view_type == "matrix_transpose":
             view = self._ensure_transpose_view()
             config = self._ensure_transpose_config(method)
             config.set_method(method)
             rows, cols = view.parameters()
             config.set_values(rows, cols, view.alpha_text())
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.content = config.view
-                self._config_container.visible = True
-                self._config_visible = True
-                self._safe_update(self._config_container)
+            self._config_visible = True
+            return RouteTarget(view=view.view, config_view=config.view, config_visible=True)
 
-        elif method.view_type == "matrix_identities":
+        if method.view_type == "matrix_identities":
             view = self._ensure_matrix_identities_view()
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.content = view.config_view
-                self._config_container.visible = True
-                self._config_visible = True
-                self._safe_update(self._config_container)
+            self._config_visible = True
+            return RouteTarget(view=view.view, config_view=view.config_view, config_visible=True)
 
-        elif method.view_type == "mer_notes":
+        if method.view_type == "mer_notes":
             view = self._ensure_mer_view()
-            if self._center_container:
-                self._center_container.content = view.view
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.visible = False
-                self._safe_update(self._config_container)
+            self._config_visible = False
+            return RouteTarget(view=view.view, config_view=None, config_visible=False)
 
-        else:
-            if self._center_container:
-                self._center_container.content = None
-                self._safe_update(self._center_container)
-            if self._config_container:
-                self._config_container.visible = False
-                self._safe_update(self._config_container)
+        self._config_visible = False
+        return RouteTarget(view=None, config_view=None, config_visible=False)
 
-        if self._left_menu:
-            self._left_menu.set_active_method(method.id)
-
-    def _safe_update(self, control: Optional[ft.Control]) -> None:
+    async def _navigate_to_method(self, method_id: str) -> None:
+        if not self._router:
+            return
         try:
-            if control and control.page:
-                control.update()
-        except AssertionError:
-            pass
+            success = await self._router.navigate_and_wait(method_id, timeout=2.0)
+        except Exception as exc:  # pragma: no cover - ruta defensiva
+            logging.getLogger(__name__).exception("Error changing method to %s", method_id)
+            match = find_method(method_id)
+            label = match[1].label if match else method_id
+            self._show_snackbar(f"Error al activar '{label}': {exc}", error=True)
+            return
+        if not success:
+            logging.getLogger(__name__).warning("Timeout waiting for method %s to signal readiness.", method_id)
+            self._show_snackbar("La vista tardó en cargar; revisa la consola para más detalles.")
 
     # ------------------------------ Config panels ------------------------------
     def _ensure_matrix_ops_config(self, method: MethodInfo) -> MatrixOpsConfigPanel:

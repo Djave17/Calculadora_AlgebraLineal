@@ -257,9 +257,15 @@ class TransposeView:
                 width=420,
                 content=ft.Column(controls=[ft.Text(line) for line in self._last_steps], scroll=ft.ScrollMode.AUTO),
             ),
-            actions=[ft.TextButton("Cerrar", on_click=lambda e, dlg=dialog: self._close_dialog(dlg))],
             actions_alignment=ft.MainAxisAlignment.END,
         )
+        dialog.actions = [
+            ft.TextButton(
+                "Cerrar",
+                on_click=lambda e: self._close_dialog(dialog),
+                style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+            )
+        ]
         try:
             self._page.open(dialog)
         except AttributeError:

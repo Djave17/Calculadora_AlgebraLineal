@@ -163,7 +163,6 @@ class MethodButton:
             border_radius=14,
             bgcolor=PRIMARY_COLOR if self._is_active and self.method.available else None,
             ink=self.method.available,
-            on_click=self._handle_click if self.method.available else None,
             content=row,
             border=ft.border.all(1, color=PRIMARY_COLOR if self.method.available else BORDER_COLOR),
         )
@@ -176,7 +175,13 @@ class MethodButton:
         self._icon_control = icon
         self._label_control = label
         self._container = container
-        return container
+        wrapper = ft.GestureDetector(
+            content=container,
+            on_tap=self._handle_click if self.method.available else None,
+            mouse_cursor=ft.MouseCursor.CLICK if self.method.available else ft.MouseCursor.BASIC,
+        )
+        self._control = wrapper
+        return wrapper
 
     def set_active(self, active: bool) -> None:
         if not self.method.available:

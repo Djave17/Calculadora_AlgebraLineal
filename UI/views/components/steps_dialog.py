@@ -37,18 +37,18 @@ def show_steps_dialog(
     for step in steps:
         items.append(_build_step_card(step))
 
-    scrollable = ft.Container(
+    steps_list = ft.ListView(
         height=420,
-        content=ft.Column(
-            spacing=14,
-            controls=items,
-            scroll=ft.ScrollMode.AUTO,
-        ),
+        spacing=14,
+        controls=items,
+        padding=ft.Padding(0, 0, 0, 0),
+        auto_scroll=False,
+        expand=False,
     )
 
     content = ft.Column(
         spacing=16,
-        controls=[header, scrollable],
+        controls=[header, steps_list],
     )
 
     dialog = ft.AlertDialog(
@@ -60,16 +60,16 @@ def show_steps_dialog(
             bgcolor=SURFACE_COLOR,
             content=content,
         ),
-        actions=[
-            ft.TextButton(
-                "Cerrar",
-                on_click=lambda e: _close_dialog(page, dialog),
-                style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
-            )
-        ],
         actions_alignment=ft.MainAxisAlignment.END,
         shape=ft.RoundedRectangleBorder(radius=18),
     )
+    dialog.actions = [
+        ft.TextButton(
+            "Cerrar",
+            on_click=lambda e: _close_dialog(page, dialog),
+            style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+        )
+    ]
 
     try:
         page.open(dialog)
