@@ -23,6 +23,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem
 
 from ViewModels.resolucion_matriz_vm import ResultVM
+from ..helpers import parse_number
 
 
 def matrix_lines(matrix: Sequence[Sequence[Fraction | float]] | None, indent: str = "") -> List[str]:
@@ -129,13 +130,7 @@ def fill_table_with_zero(table: QTableWidget) -> None:
 def _parse_number(text: str) -> Fraction:
     """Convierte cadenas como ``3/5`` o ``2.75`` en fracciones exactas."""
 
-    normalized = text.replace(" ", "")
-    if normalized == "":
-        return Fraction(0)
-    try:
-        return Fraction(normalized)
-    except ValueError as exc:
-        raise ValueError(f"Valor no numérico: '{text}'") from exc
+    return parse_number(text)
 
 
 def table_to_matrix(table: QTableWidget) -> List[List[Fraction]]:

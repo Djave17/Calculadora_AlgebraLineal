@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import List, Optional, Sequence
 
+_MAX_DENOMINATOR = 10_000
+
 from Models.matriz import Matriz
 from Operadores.estrategia_pivoteo import PivoteoParcial
 from Operadores.reductor_escalonado import ReductorEscalonado
@@ -171,7 +173,7 @@ class MatrixInverseViewModel:
         if isinstance(value, Fraction):
             return value
         if isinstance(value, float):
-            return Fraction(value).limit_denominator()
+            return Fraction(value).limit_denominator(_MAX_DENOMINATOR)
         if isinstance(value, int):
             return Fraction(value)
         return Fraction(str(value))

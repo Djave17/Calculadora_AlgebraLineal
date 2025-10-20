@@ -6,7 +6,7 @@ from typing import List, Optional
 import flet as ft
 from flet import Icons as icons
 
-from ...helpers import parse_matrix
+from ...helpers import parse_matrix, parse_number
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
 from ViewModels import matrix_ops_vm as ops
 
@@ -452,7 +452,7 @@ class MatrixOpsView:
         if not txt:
             return None
         try:
-            return Fraction(txt)
+            return parse_number(txt)
         except ValueError as exc:
             raise ValueError(f"{ALPHA} inválido: '{txt}'") from exc
 
