@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import flet as ft
 from flet import Icons as icons
+from flet import Colors as colors
 
 from ...helpers import parse_matrix, parse_number
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
