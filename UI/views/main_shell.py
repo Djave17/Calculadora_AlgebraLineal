@@ -169,6 +169,14 @@ class MainShell:
             # revertir selección visual si algo falla
             self.active_category = previous_category
             self.active_method = previous_method
+            if previous_method is not None:
+                try:
+                    self._activate_method(previous_method)
+                except Exception:  # pragma: no cover - fallback defensivo
+                    logging.getLogger(__name__).exception(
+                        "No se pudo restaurar el método anterior %s tras un error de cambio.",
+                        previous_method.id,
+                    )
             if self._left_menu and previous_method:
                 self._left_menu.set_active_method(previous_method.id)
 

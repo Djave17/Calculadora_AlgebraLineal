@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import flet as ft
 from flet import Icons as icons
@@ -44,6 +44,20 @@ class MatrixEditor:
         "(",
         ")",
     )
+    TOKEN_INSERT_MAP: Dict[str, str] = {
+        "sin": "sin(",
+        "cos": "cos(",
+        "tan": "tan(",
+        "√": "√(",
+        "log": "log(",
+        "ln": "ln(",
+        "π": "π",
+        "e": "e",
+        "^": "^",
+        "/": "/",
+        "(": "(",
+        ")": ")",
+    }
 
     def __init__(
         self,
@@ -301,7 +315,8 @@ class MatrixEditor:
             return
         row, col = self._active_cell
         field = self._cells[row][col]
-        field.value = (field.value or "") + token
+        insertion = self.TOKEN_INSERT_MAP.get(token, token)
+        field.value = (field.value or "") + insertion
         field.update()
 
     def _handle_focus(self, row: int, col: int) -> None:
