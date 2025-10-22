@@ -45,6 +45,7 @@ class MatrixInverseView:
         )
         self._last_steps: List[StepVM] = []
         self._last_pivots: List[int] = []
+        self._last_result: Optional[MatrixInverseResultVM] = None
 
         self._root = self._build()
         self._rebuild_table()
@@ -68,6 +69,7 @@ class MatrixInverseView:
         self._render_placeholder()
 
     def resolve(self) -> None:
+        self._last_result = None
         try:
             matrix = self._collect_matrix()
         except ValueError as exc:
@@ -80,11 +82,22 @@ class MatrixInverseView:
             return
         self._render_result(result)
 
+    def verify_inverse(self) -> None:
+        if self._last_result is None:
+            self._show_error("Primero calcula la inversa antes de verificar A * A^-1 = I.")
+            return
+        verification = self._last_result.verification
+        if not verification.can_verify:
+            self._show_error(verification.message)
+            return
+        self._show_verification_dialog(self._last_result)
+
     def clear_fields(self) -> None:
         for row in self._cells:
             for cell in row:
                 cell.value = "0"
                 self._safe_update(cell)
+        self._last_result = None
         self._render_placeholder()
 
     # --------------------------- Construcción --------------------------- #
@@ -219,6 +232,7 @@ class MatrixInverseView:
     def _render_placeholder(self) -> None:
         self._last_steps = []
         self._last_pivots = []
+        self._last_result = None
         self._steps_button.visible = False
         self._safe_update(self._steps_button)
         self._result_container.controls = [
@@ -230,6 +244,7 @@ class MatrixInverseView:
         self._safe_update(self._result_container)
 
     def _render_result(self, result: MatrixInverseResultVM) -> None:
+        self._last_result = result
         self._last_steps = result.steps
         self._last_pivots = result.pivot_columns
         self._steps_button.visible = bool(result.steps)
@@ -265,6 +280,89 @@ class MatrixInverseView:
 
         self._result_container.controls = content
         self._safe_update(self._result_container)
+
+    def _show_verification_dialog(self, result: MatrixInverseResultVM) -> None:
+        if not self._page:
+            return
+        verification = result.verification
+        inverse_matrix = result.inverse_matrix or []
+        product_matrix = verification.product or []
+        identity_matrix = verification.identity or []
+        message_color = PRIMARY_COLOR if verification.holds else "#c62828"
+
+        matrix_sections: List[ft.Control] = [
+            self._build_labeled_matrix_card("Matriz A", result.original_matrix),
+        ]
+        if inverse_matrix:
+            matrix_sections.append(self._build_labeled_matrix_card("Matriz inversa A^-1", inverse_matrix, emphasize=True))
+        if product_matrix:
+            matrix_sections.append(
+                self._build_labeled_matrix_card(
+                    "Producto A * A^-1",
+                    product_matrix,
+                    emphasize=verification.holds,
+                )
+            )
+        if identity_matrix:
+            matrix_sections.append(self._build_labeled_matrix_card("Matriz identidad I", identity_matrix))
+
+        matrices_column = ft.Column(spacing=12, controls=matrix_sections, scroll=ft.ScrollMode.AUTO)
+        content = ft.Column(
+            spacing=14,
+            controls=[
+                ft.Text("Verificacion de la propiedad A * A^-1 = I", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                ft.Text(verification.message, color=message_color, weight=ft.FontWeight.W_600, size=12),
+                ft.Container(height=360, content=matrices_column),
+            ],
+        )
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Resultado de la verificacion", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+            content=ft.Container(
+                width=720,
+                padding=ft.Padding(12, 12, 12, 12),
+                bgcolor=SURFACE_COLOR,
+                content=content,
+            ),
+            actions_alignment=ft.MainAxisAlignment.END,
+            shape=ft.RoundedRectangleBorder(radius=18),
+        )
+
+        def _close_dialog(_event=None) -> None:
+            try:
+                self._page.close(dialog)
+            except AttributeError:
+                dialog.open = False
+                dialog.update()
+
+        dialog.actions = [
+            ft.TextButton(
+                "Cerrar",
+                on_click=_close_dialog,
+                style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+            )
+        ]
+
+        try:
+            self._page.open(dialog)
+        except AttributeError:
+            dialog.open = True
+            dialog.update()
+
+    def _build_labeled_matrix_card(
+        self,
+        title: str,
+        matrix: Sequence[Sequence[Fraction]],
+        emphasize: bool = False,
+    ) -> ft.Control:
+        return ft.Column(
+            spacing=6,
+            controls=[
+                ft.Text(title, weight=ft.FontWeight.W_600, color=TEXT_DARK, size=12),
+                self._build_matrix_card(matrix, emphasize=emphasize),
+            ],
+        )
 
     def _build_matrix_card(self, matrix: Sequence[Sequence[Fraction]], emphasize: bool = False) -> ft.Control:
         grid = self._build_matrix_grid(matrix)
