@@ -114,6 +114,49 @@ def transpose(A: Sequence[Sequence[Fraction]]) -> MatrixOpResult:
     return MatrixOpResult("A^T", C, steps)
 
 
+def rank(A: Sequence[Sequence[Fraction]], name: str = "A") -> MatrixOpResult:
+    if not A or not A[0]:
+        raise ValueError("La matriz no puede ser vacía.")
+    m, n = len(A), len(A[0])
+    if any(len(row) != n for row in A):
+        raise ValueError("Todas las filas deben tener la misma longitud.")
+
+    mat = [[Fraction(value) for value in row] for row in A]
+    row = 0
+    pivots = 0
+    steps: List[str] = [f"Inicio del cálculo del rango de {name} ({m}x{n})."]
+
+    for col in range(n):
+        pivot_row = None
+        for r in range(row, m):
+            if mat[r][col] != 0:
+                pivot_row = r
+                break
+        if pivot_row is None:
+            steps.append(f"Columna {col + 1}: sin pivote, continúa.")
+            continue
+        if pivot_row != row:
+            mat[row], mat[pivot_row] = mat[pivot_row], mat[row]
+            steps.append(f"Se intercambian filas {row + 1} y {pivot_row + 1}.")
+        pivot_val = mat[row][col]
+        steps.append(f"Pivote en ({row + 1}, {col + 1}) = {pivot_val}. Se normaliza la fila {row + 1}.")
+        mat[row] = [value / pivot_val for value in mat[row]]
+        for r in range(m):
+            if r == row:
+                continue
+            factor = mat[r][col]
+            if factor == 0:
+                continue
+            mat[r] = [mat[r][c] - factor * mat[row][c] for c in range(n)]
+            steps.append(f"Se elimina la entrada ({r + 1}, {col + 1}) con factor {factor}.")
+        pivots += 1
+        row += 1
+        if row == m:
+            break
+    steps.append(f"Rango de {name}: {pivots}.")
+    return MatrixOpResult(f"r({name})", [[Fraction(pivots)]], steps)
+
+
 def verify_properties(
     A: Sequence[Sequence[Fraction]],
     B: Sequence[Sequence[Fraction]] | None,
@@ -123,29 +166,48 @@ def verify_properties(
 
     Propiedades verificadas:
     - (A^T)^T = A
+    - r(A) = r(A^T)
     - Si A y B compatibles: (A+B)^T = A^T + B^T
-    - Si α especificado: (αA)^T = α(A^T)
+    - Si A y B compatibles: (A-B)^T = A^T - B^T
+    - Si r especificado: (rA)^T = r(A^T)
+    - Si r y B compatibles: (r(A+B))^T = r(A^T + B^T)
     - Si AB definido: (AB)^T = B^T A^T
     """
 
     props: List[Dict[str, object]] = []
+    scalar_symbol = "r"
 
-    # (A^T)^T = A
-    tA = transpose(A).result
+    original = [list(map(Fraction, row)) for row in A]
+    tA_res = transpose(A)
+    tA = tA_res.result
     ttA = transpose(tA).result
-    ok = ttA == [list(map(Fraction, row)) for row in A]
     props.append({
         "propiedad": "(A^T)^T = A",
-        "cumple": ok,
+        "cumple": ttA == original,
         "detalle": "Dos traspuestas devuelven la matriz original.",
     })
 
-    # (A+B)^T = A^T + B^T
+    try:
+        rank_A = rank(A, "A")
+        rank_AT = rank(tA, "A^T")
+        rank_val = rank_A.result[0][0]
+        rank_t_val = rank_AT.result[0][0]
+        props.append({
+            "propiedad": "r(A) = r(A^T)",
+            "cumple": rank_val == rank_t_val,
+            "detalle": f"r(A) = {rank_val}, r(A^T) = {rank_t_val}.",
+        })
+    except Exception as exc:
+        props.append({
+            "propiedad": "r(A) = r(A^T)",
+            "cumple": False,
+            "detalle": f"No evaluable: {exc}",
+        })
+
     if B is not None:
         try:
             sumAB = add(A, B).result
             tSum = transpose(sumAB).result
-            tA = transpose(A).result
             tB = transpose(B).result
             sumt = add(tA, tB).result
             props.append({
@@ -160,23 +222,56 @@ def verify_properties(
                 "detalle": f"No evaluable: {exc}",
             })
 
-    # (αA)^T = α(A^T)
+        try:
+            diffAB = subtract(A, B).result
+            tDiff = transpose(diffAB).result
+            tB = transpose(B).result
+            diff_t = subtract(tA, tB).result
+            props.append({
+                "propiedad": "(A-B)^T = A^T - B^T",
+                "cumple": tDiff == diff_t,
+                "detalle": "La traspuesta distribuye sobre la resta si A y B son conformables.",
+            })
+        except Exception as exc:
+            props.append({
+                "propiedad": "(A-B)^T = A^T - B^T",
+                "cumple": False,
+                "detalle": f"No evaluable: {exc}",
+            })
+
     if alpha is not None:
-        tA = transpose(A).result
         left = transpose(scalar_mult(alpha, A).result).result
         right = scalar_mult(alpha, tA).result
         props.append({
-            "propiedad": "(αA)^T = α(A^T)",
+            "propiedad": f"({scalar_symbol}A)^T = {scalar_symbol}(A^T)",
             "cumple": left == right,
-            "detalle": "La traspuesta con escalar conmute.",
+            "detalle": "La traspuesta y el producto por escalar conmutan.",
         })
 
-    # (AB)^T = B^T A^T
+    if alpha is not None and B is not None:
+        try:
+            sumAB = add(A, B).result
+            scaled_sum = scalar_mult(alpha, sumAB).result
+            left = transpose(scaled_sum).result
+            tB = transpose(B).result
+            sum_t = add(tA, tB).result
+            right = scalar_mult(alpha, sum_t).result
+            props.append({
+                "propiedad": f"({scalar_symbol}(A+B))^T = {scalar_symbol}(A^T + B^T)",
+                "cumple": left == right,
+                "detalle": "El escalar puede factorizarse tras tomar la traspuesta de la suma.",
+            })
+        except Exception as exc:
+            props.append({
+                "propiedad": f"({scalar_symbol}(A+B))^T = {scalar_symbol}(A^T + B^T)",
+                "cumple": False,
+                "detalle": f"No evaluable: {exc}",
+            })
+
     if B is not None:
         try:
             AB = multiply(A, B).result
             tAB = transpose(AB).result
-            tA = transpose(A).result
             tB = transpose(B).result
             right = multiply(tB, tA).result
             props.append({
@@ -192,4 +287,3 @@ def verify_properties(
             })
 
     return props
-

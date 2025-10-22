@@ -73,12 +73,12 @@ class MatrixInverseViewModel:
         inverse_matrix: Optional[List[List[Fraction]]]
         if is_identity_left:
             inverse_matrix = right_block
-            message = "Matriz invertible: se obtuvo [I | A⁻¹]."
+            message = "Matriz invertible (no singular): se obtuvo [I | A⁻¹]."
         else:
             inverse_matrix = None
-            message = "La matriz no es invertible porque no tiene pivote en cada fila."
+            message = "Matriz no invertible (singular): faltan pivotes para obtener identidad."
 
-        properties = self._build_properties(n, full_rank)
+        properties = self._build_properties(matrix, inverse_matrix, n, full_rank, is_identity_left)
 
         return MatrixInverseResultVM(
             is_invertible=is_identity_left,
@@ -122,23 +122,32 @@ class MatrixInverseViewModel:
             )
         return steps
 
-    def _build_properties(self, n: int, full_rank: bool) -> List[PropertyCheckVM]:
+    def _build_properties(
+        self,
+        original: List[List[Fraction]],
+        inverse_matrix: Optional[List[List[Fraction]]],
+        n: int,
+        full_rank: bool,
+        is_identity_left: bool,
+    ) -> List[PropertyCheckVM]:
         interpretation_true = {
             "c": "A es invertible porque cada fila posee un pivote (rango completo).",
             "d": "El sistema homogéneo A x = 0 solo admite la solución trivial; existe A⁻¹.",
             "e": "Las columnas de A son linealmente independientes; conforman una base de ℝⁿ.",
+            "f": "El producto A · A⁻¹ devuelve la matriz identidad.",
         }
         interpretation_false = {
             "c": "Faltan pivotes en alguna fila; el rango es menor que n.",
             "d": "Existen soluciones no triviales para A x = 0; la inversa no existe.",
             "e": "Las columnas son dependientes lineales; no pueden generar ℝⁿ.",
+            "f": "No se puede verificar A · A⁻¹ = I porque A no es invertible.",
         }
         properties_specs = [
             ("c", "La matriz A tiene n posiciones pivote."),
             ("d", "La ecuación A x = 0 tiene solamente la solución trivial."),
             ("e", "Las columnas de A forman un conjunto linealmente independiente."),
         ]
-        return [
+        props = [
             PropertyCheckVM(
                 code=code,
                 label=label,
@@ -147,6 +156,28 @@ class MatrixInverseViewModel:
             )
             for code, label in properties_specs
         ]
+        if inverse_matrix is not None and is_identity_left:
+            producto = self._matrix_multiply(original, inverse_matrix)
+            identidad = self._identity_matrix(n)
+            holds = producto == identidad
+            props.append(
+                PropertyCheckVM(
+                    code="f",
+                    label="A · A⁻¹ = I",
+                    holds=holds,
+                    interpretation=interpretation_true["f"] if holds else "Se obtuvo una matriz distinta de I al multiplicar A por su inversa.",
+                )
+            )
+        else:
+            props.append(
+                PropertyCheckVM(
+                    code="f",
+                    label="A · A⁻¹ = I",
+                    holds=False,
+                    interpretation=interpretation_false["f"],
+                )
+            )
+        return props
 
     def _identity_matrix(self, size: int) -> List[List[Fraction]]:
         return [
@@ -180,3 +211,25 @@ class MatrixInverseViewModel:
 
     def _copy_matrix(self, data: List[List[Fraction]]) -> List[List[Fraction]]:
         return [[cell for cell in row] for row in data]
+
+    def _matrix_multiply(
+        self,
+        A: Sequence[Sequence[Fraction]],
+        B: Sequence[Sequence[Fraction]],
+    ) -> List[List[Fraction]]:
+        rows_a = len(A)
+        cols_a = len(A[0]) if rows_a else 0
+        rows_b = len(B)
+        cols_b = len(B[0]) if rows_b else 0
+        if cols_a != rows_b:
+            raise ValueError("Dimensiones incompatibles para multiplicación.")
+        result: List[List[Fraction]] = []
+        for i in range(rows_a):
+            row: List[Fraction] = []
+            for j in range(cols_b):
+                total = Fraction(0)
+                for k in range(cols_a):
+                    total += Fraction(A[i][k]) * Fraction(B[k][j])
+                row.append(total)
+            result.append(row)
+        return result

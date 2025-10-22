@@ -238,8 +238,12 @@ class MatrixInverseView:
         message_color = PRIMARY_COLOR if result.is_invertible else "#c62828"
         message = ft.Text(result.message, color=message_color, weight=ft.FontWeight.BOLD)
 
+        classification = "Invertible / no singular" if result.is_invertible else "No invertible / singular"
+        classification_text = ft.Text(f"Clasificación: {classification}", color=message_color)
+
         content: List[ft.Control] = [
             message,
+            classification_text,
             ft.Text("Construcción de la matriz aumentada [A | I]:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
             self._build_matrix_card(result.initial_augmented),
             ft.Text("Transformación paso a paso:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
