@@ -416,6 +416,8 @@ class MainShell:
                 method,
                 self._handle_matrix_inverse_order_change,
                 self._handle_matrix_inverse_resolve,
+                self._handle_matrix_inverse_verify,
+                self._handle_matrix_inverse_det_steps,
                 self._handle_matrix_inverse_clear,
             )
         return self._matrix_inverse_config
@@ -450,6 +452,14 @@ class MainShell:
     def _handle_matrix_inverse_resolve(self) -> None:
         view = self._ensure_matrix_inverse_view()
         view.resolve()
+
+    def _handle_matrix_inverse_verify(self) -> None:
+        view = self._ensure_matrix_inverse_view()
+        view.verify_inverse()
+
+    def _handle_matrix_inverse_det_steps(self) -> None:
+        view = self._ensure_matrix_inverse_view()
+        view.show_determinant_steps()
 
     def _handle_matrix_inverse_clear(self) -> None:
         view = self._ensure_matrix_inverse_view()

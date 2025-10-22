@@ -257,12 +257,16 @@ class MatrixInverseConfigPanel(_BaseConfigPanel):
         method: MethodInfo,
         on_order_change: Callable[[int], None],
         on_resolve: Callable[[], None],
+        on_verify: Callable[[], None],
+        on_det_steps: Callable[[], None],
         on_clear: Callable[[], None],
     ) -> None:
         super().__init__(method)
         self._order = 3
         self._on_order_change = on_order_change
         self._on_resolve = on_resolve
+        self._on_verify = on_verify
+        self._on_det_steps = on_det_steps
         self._on_clear = on_clear
         self._order_field: ft.TextField | None = None
         self._updating = False
@@ -284,6 +288,8 @@ class MatrixInverseConfigPanel(_BaseConfigPanel):
             spacing=10,
             controls=[
                 ft.FilledButton("Calcular inversa", on_click=lambda _: self._on_resolve(), style=RED_FILLED_STYLE),
+                ft.FilledButton("Verificar A * A^-1", on_click=lambda _: self._on_verify(), style=RED_FILLED_STYLE),
+                ft.FilledButton("Ver pasos determinante", on_click=lambda _: self._on_det_steps(), style=RED_FILLED_STYLE),
                 ft.OutlinedButton("Limpiar", on_click=lambda _: self._on_clear(), style=RED_OUTLINED_STYLE),
             ],
         )

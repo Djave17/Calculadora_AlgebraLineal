@@ -46,6 +46,12 @@ class MatrixInverseView:
         self._last_steps: List[StepVM] = []
         self._last_pivots: List[int] = []
         self._last_result: Optional[MatrixInverseResultVM] = None
+        self._last_det_steps: List[StepVM] = []
+        self._last_determinant_value: Fraction = Fraction(0)
+        self._verification_container: ft.Container = ft.Container(visible=False)
+        self._determinant_container: ft.Container = ft.Container(visible=False)
+        self._main_content: ft.Column = ft.Column(spacing=16, expand=True, visible=True)
+        self._active_section: str = "main"
 
         self._root = self._build()
         self._rebuild_table()
@@ -70,6 +76,12 @@ class MatrixInverseView:
 
     def resolve(self) -> None:
         self._last_result = None
+        self._last_det_steps = []
+        self._last_determinant_value = Fraction(0)
+        self._verification_container.visible = False
+        self._verification_container.content = None
+        self._determinant_container.visible = False
+        self._determinant_container.content = None
         try:
             matrix = self._collect_matrix()
         except ValueError as exc:
@@ -81,6 +93,7 @@ class MatrixInverseView:
             self._show_error(str(exc))
             return
         self._render_result(result)
+        self._display_section("main")
 
     def verify_inverse(self) -> None:
         if self._last_result is None:
@@ -88,9 +101,12 @@ class MatrixInverseView:
             return
         verification = self._last_result.verification
         if not verification.can_verify:
-            self._show_error(verification.message)
+            self._show_inline_verification_message(verification.message, success=False)
             return
-        self._show_verification_dialog(self._last_result)
+        self._show_inline_verification(self._last_result)
+
+    def show_determinant_steps(self) -> None:
+        self._show_determinant_steps()
 
     def clear_fields(self) -> None:
         for row in self._cells:
@@ -98,6 +114,11 @@ class MatrixInverseView:
                 cell.value = "0"
                 self._safe_update(cell)
         self._last_result = None
+        self._last_det_steps = []
+        self._verification_container.visible = False
+        self._verification_container.content = None
+        self._determinant_container.visible = False
+        self._determinant_container.content = None
         self._render_placeholder()
 
     # --------------------------- Construcción --------------------------- #
@@ -233,6 +254,14 @@ class MatrixInverseView:
         self._last_steps = []
         self._last_pivots = []
         self._last_result = None
+        self._last_det_steps = []
+        self._last_determinant_value = Fraction(0)
+        self._main_content.visible = False
+        self._main_content.controls.clear()
+        self._verification_container.visible = False
+        self._verification_container.content = None
+        self._determinant_container.visible = False
+        self._determinant_container.content = None
         self._steps_button.visible = False
         self._safe_update(self._steps_button)
         self._result_container.controls = [
@@ -247,6 +276,8 @@ class MatrixInverseView:
         self._last_result = result
         self._last_steps = result.steps
         self._last_pivots = result.pivot_columns
+        self._last_det_steps = result.determinant_steps
+        self._last_determinant_value = result.determinant
         self._steps_button.visible = bool(result.steps)
         self._safe_update(self._steps_button)
 
@@ -254,101 +285,235 @@ class MatrixInverseView:
         message = ft.Text(result.message, color=message_color, weight=ft.FontWeight.BOLD)
 
         classification = "Invertible / no singular" if result.is_invertible else "No invertible / singular"
-        classification_text = ft.Text(f"Clasificación: {classification}", color=message_color)
+        classification_text = ft.Text(f"Clasificacion: {classification}", color=message_color)
 
-        content: List[ft.Control] = [
+        main_controls: List[ft.Control] = [
             message,
             classification_text,
-            ft.Text("Construcción de la matriz aumentada [A | I]:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
+            ft.Text("Construccion de la matriz aumentada [A | I]:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
             self._build_matrix_card(result.initial_augmented),
-            ft.Text("Transformación paso a paso:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
+            ft.Text("Transformacion paso a paso:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
             self._build_steps_section(result.steps),
             ft.Text("Resultado final de Gauss-Jordan:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
             self._build_matrix_card(result.final_augmented),
         ]
 
         if result.is_invertible and result.inverse_matrix is not None:
-            content.extend([
-                ft.Text("Matriz inversa A⁻¹:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
+            main_controls.extend([
+                ft.Text("Matriz inversa A^-1:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
                 self._build_matrix_card(result.inverse_matrix, emphasize=True),
             ])
 
-        content.extend([
-            ft.Text("Verificación teórica (teorema de la matriz invertible):", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
+        main_controls.extend([
+            ft.Text("Verificacion teorica (teorema de la matriz invertible):", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
             self._build_properties_section(result.properties),
         ])
 
-        self._result_container.controls = content
+        self._last_determinant_value = result.determinant
+        determinant_value = self._format_fraction(result.determinant)
+        det_summary = ft.Column(
+            spacing=6,
+            controls=[
+                ft.Text("Determinante de A:", size=13, color=TEXT_DARK, weight=ft.FontWeight.W_600),
+                ft.Row(
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Text(f"det(A) = {determinant_value}", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                        ft.FilledButton(
+                            "Ver pasos determinante",
+                            icon=icons.FUNCTIONS,
+                            on_click=self._show_determinant_steps,
+                            style=ft.ButtonStyle(
+                                bgcolor={ft.ControlState.DEFAULT: PRIMARY_COLOR},
+                                color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        )
+        main_controls.append(det_summary)
+
+        self._main_content.controls = main_controls
+        self._main_content.visible = True
+
+        self._verification_container.visible = False
+        self._verification_container.content = None
+        self._verification_container.bgcolor = "#fff2ec"
+        self._verification_container.border = ft.border.all(1, color=BORDER_COLOR)
+        self._verification_container.border_radius = 16
+        self._verification_container.padding = ft.Padding(16, 16, 16, 16)
+
+        self._determinant_container.visible = False
+        self._determinant_container.content = None
+        self._determinant_container.bgcolor = "#f5f7ff"
+        self._determinant_container.border = ft.border.all(1, color=BORDER_COLOR)
+        self._determinant_container.border_radius = 16
+        self._determinant_container.padding = ft.Padding(16, 16, 16, 16)
+
+        self._result_container.controls = [
+            self._main_content,
+            self._verification_container,
+            self._determinant_container,
+        ]
         self._safe_update(self._result_container)
+        self._display_section("main")
 
-    def _show_verification_dialog(self, result: MatrixInverseResultVM) -> None:
-        if not self._page:
-            return
+    def _show_inline_verification(self, result: MatrixInverseResultVM) -> None:
         verification = result.verification
-        inverse_matrix = result.inverse_matrix or []
-        product_matrix = verification.product or []
-        identity_matrix = verification.identity or []
         message_color = PRIMARY_COLOR if verification.holds else "#c62828"
-
         matrix_sections: List[ft.Control] = [
             self._build_labeled_matrix_card("Matriz A", result.original_matrix),
         ]
-        if inverse_matrix:
-            matrix_sections.append(self._build_labeled_matrix_card("Matriz inversa A^-1", inverse_matrix, emphasize=True))
-        if product_matrix:
+        if result.inverse_matrix:
+            matrix_sections.append(
+                self._build_labeled_matrix_card("Matriz inversa A^-1", result.inverse_matrix, emphasize=True)
+            )
+        if verification.product:
             matrix_sections.append(
                 self._build_labeled_matrix_card(
                     "Producto A * A^-1",
-                    product_matrix,
+                    verification.product,
                     emphasize=verification.holds,
                 )
             )
-        if identity_matrix:
-            matrix_sections.append(self._build_labeled_matrix_card("Matriz identidad I", identity_matrix))
+        if verification.identity:
+            matrix_sections.append(self._build_labeled_matrix_card("Matriz identidad I", verification.identity))
 
-        matrices_column = ft.Column(spacing=12, controls=matrix_sections, scroll=ft.ScrollMode.AUTO)
-        content = ft.Column(
-            spacing=14,
+        matrices_column: Optional[ft.Control] = None
+        if matrix_sections:
+            matrices_column = ft.Container(
+                height=260,
+                content=ft.Column(
+                    spacing=12,
+                    controls=matrix_sections,
+                    scroll=ft.ScrollMode.AUTO,
+                ),
+            )
+
+        controls: List[ft.Control] = [
+            ft.Text("Verificacion de la propiedad A * A^-1 = I", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+            ft.Text(verification.message, color=message_color, weight=ft.FontWeight.W_600, size=12),
+        ]
+        rows_a = len(result.original_matrix)
+        cols_a = len(result.original_matrix[0]) if result.original_matrix else 0
+        summary_text = ft.Text(
+            f"Producto matricial A * A^-1: A es {rows_a}x{cols_a}.",
+            size=12,
+            color=TEXT_MUTED,
+        )
+        controls.append(summary_text)
+        if verification.steps:
+            controls.append(self._build_multiplication_text_summary(verification.steps))
+        if matrices_column is not None:
+            controls.append(matrices_column)
+
+        self._verification_container.content = ft.Column(spacing=12, controls=controls)
+        self._display_section("verification")
+
+    def _show_inline_verification_message(self, message: str, success: bool) -> None:
+        color = PRIMARY_COLOR if success else "#c62828"
+        self._verification_container.content = ft.Column(
+            spacing=8,
             controls=[
                 ft.Text("Verificacion de la propiedad A * A^-1 = I", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
-                ft.Text(verification.message, color=message_color, weight=ft.FontWeight.W_600, size=12),
-                ft.Container(height=360, content=matrices_column),
+                ft.Text(message, color=color, weight=ft.FontWeight.W_600, size=12),
             ],
         )
+        self._display_section("verification")
 
-        dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("Resultado de la verificacion", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
-            content=ft.Container(
-                width=720,
-                padding=ft.Padding(12, 12, 12, 12),
-                bgcolor=SURFACE_COLOR,
-                content=content,
-            ),
-            actions_alignment=ft.MainAxisAlignment.END,
-            shape=ft.RoundedRectangleBorder(radius=18),
+    def _show_determinant_steps(self, _event=None) -> None:
+        if not self._last_result:
+            self._show_error("Calcula la inversa antes de mostrar los pasos del determinante.")
+            return
+        if not self._last_det_steps:
+            self._show_error("No hay pasos registrados para el determinante.")
+            return
+        steps_view = self._build_steps_section(self._last_det_steps)
+        self._determinant_container.content = ft.Column(
+            spacing=12,
+            controls=[
+                ft.Text(
+                    "Cálculo de det(A) mediante eliminación Gauss-Jordan:",
+                    weight=ft.FontWeight.BOLD,
+                    color=TEXT_DARK,
+                ),
+                ft.Text(
+                    f"det(A) = {self._format_fraction(self._last_determinant_value)}",
+                    weight=ft.FontWeight.W_600,
+                    color=PRIMARY_COLOR if self._last_determinant_value != 0 else "#c62828",
+                ),
+                ft.Text("Registro de operaciones elementales:", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                self._build_step_text_log(self._last_det_steps),
+                ft.Text("Matrices intermedias:", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                ft.Text(
+                    "Se muestra cada matriz luego de aplicar la operación indicada.",
+                    size=12,
+                    color=TEXT_MUTED,
+                ),
+                steps_view,
+            ],
         )
+        self._display_section("determinant")
 
-        def _close_dialog(_event=None) -> None:
-            try:
-                self._page.close(dialog)
-            except AttributeError:
-                dialog.open = False
-                dialog.update()
+    def _display_section(self, section: str) -> None:
+        self._active_section = section
+        main_visible = section == "main"
+        verification_visible = section == "verification" and self._verification_container.content is not None
+        det_visible = section == "determinant" and self._determinant_container.content is not None
 
-        dialog.actions = [
-            ft.TextButton(
-                "Cerrar",
-                on_click=_close_dialog,
-                style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
-            )
+        self._main_content.visible = main_visible
+        self._verification_container.visible = verification_visible
+        self._determinant_container.visible = det_visible
+
+        self._safe_update(self._main_content)
+        self._safe_update(self._verification_container)
+        self._safe_update(self._determinant_container)
+
+    def _build_multiplication_text_summary(self, steps: Sequence) -> ft.Control:
+        if not steps:
+            return ft.Text("No hay detalles de multiplicación disponibles.", color=TEXT_MUTED, size=12)
+        lines: List[ft.Control] = [
+            ft.Text("Detalle de cada entrada C(i, j):", weight=ft.FontWeight.W_600, color=TEXT_DARK)
         ]
+        for cell in steps:
+            terms_expr = " + ".join(
+                f"{self._format_fraction(term.left)}*{self._format_fraction(term.right)}"
+                for term in cell.terms
+            ) or "0"
+            result_line = (
+                f"C({cell.row + 1}, {cell.col + 1}) = {terms_expr} = {self._format_fraction(cell.result)}"
+            )
+            lines.append(ft.Text(result_line, size=12, color=TEXT_DARK))
+            identity_color = PRIMARY_COLOR if cell.result == cell.expected else "#c62828"
+            lines.append(
+                ft.Text(
+                    f"I({cell.row + 1}, {cell.col + 1}) = {self._format_fraction(cell.expected)}",
+                    size=12,
+                    color=identity_color,
+                )
+            )
+        return ft.Column(spacing=4, controls=lines)
 
-        try:
-            self._page.open(dialog)
-        except AttributeError:
-            dialog.open = True
-            dialog.update()
+    def _build_step_text_log(self, steps: Sequence[StepVM]) -> ft.Control:
+        if not steps:
+            return ft.Text("No se registraron operaciones.", color=TEXT_MUTED, size=12)
+        entries: List[ft.Control] = []
+        for step in steps:
+            label = "Paso inicial" if step.number == 0 else f"Paso {step.number}"
+            description = step.description or step.operation
+            if step.pivot_row is not None and step.pivot_col is not None:
+                description += f" (pivote en fila {step.pivot_row + 1}, columna {step.pivot_col + 1})"
+            entries.append(ft.Text(f"{label}: {description}", size=12, color=TEXT_DARK))
+        return ft.Column(spacing=4, controls=entries)
+
+    def _format_fraction(self, value: Fraction) -> str:
+        if isinstance(value, Fraction):
+            if value.denominator == 1:
+                return f"{value.numerator}"
+            return f"{value.numerator}/{value.denominator}"
+        return str(value)
 
     def _build_labeled_matrix_card(
         self,
