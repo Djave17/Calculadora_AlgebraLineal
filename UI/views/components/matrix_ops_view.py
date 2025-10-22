@@ -11,18 +11,18 @@ from ...helpers import parse_matrix, parse_number
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
 from ViewModels import matrix_ops_vm as ops
 
-ALPHA = "\u03b1"
+ALPHA = "r"
 
 
 class MatrixOpsView:
-    """Vista para operaciones elementales con matrices y verificación de propiedades.
+    """Vista para operaciones elementales con matrices y verificacion de propiedades.
 
     Incluye:
     - Suma A + B, resta A - B
-    - Producto por escalar α·A
-    - Producto A·B
+    - Producto por escalar r * A
+    - Producto A * B
     - Traspuestas A^T y B^T
-    - Verificación de propiedades de la traspuesta y compatibilidades
+    - Verificacion de propiedades de la traspuesta y compatibilidades
     """
 
     MIN = 1
@@ -41,7 +41,10 @@ class MatrixOpsView:
         self._result_container = ft.Column(spacing=8, expand=True)
         self._info_label = ft.Text("", color=TEXT_MUTED)
         self._operation_dropdown: ft.Dropdown | None = None
+        self._transpose_dropdown: ft.Dropdown | None = None
         self._execute_button: ft.FilledButton | None = None
+        self._transpose_button: ft.FilledButton | None = None
+        self._verify_button: ft.TextButton | None = None
         self._steps_button: ft.TextButton | None = None
         self._last_steps: List[str] = []
 
@@ -100,13 +103,17 @@ class MatrixOpsView:
             ("sub", "A - B"),
             ("scalar", f"{ALPHA} * A"),
             ("mul", "A * B"),
+        ]
+        transpose_ops = [
             ("at", "A^T"),
             ("bt", "B^T"),
-            ("sum_t", "(A + B)^T"),
-            ("diff_t", "(A - B)^T"),
-            ("scalar_t", f"({ALPHA} * A)^T"),
-            ("prod_t", "(A * B)^T"),
-            ("verify", "Verificar propiedades"),
+            ("sum_t", "(A + B)^T = A^T + B^T"),
+            ("diff_t", "(A - B)^T = A^T - B^T"),
+            ("scalar_t", f"({ALPHA} * A)^T = {ALPHA} * A^T"),
+            ("scalar_sum_t", f"({ALPHA}(A + B))^T = {ALPHA}(A^T + B^T)"),
+            ("prod_t", "(A * B)^T = B^T * A^T"),
+            ("double_t", "(A^T)^T = A"),
+            ("rank_t", "r(A) = r(A^T)"),
         ]
         self._operation_dropdown = ft.Dropdown(
             label="Operación",
@@ -115,7 +122,7 @@ class MatrixOpsView:
             width=240,
         )
         self._execute_button = ft.FilledButton(
-            "Aplicar",
+            "Calcular operación",
             icon=icons.PLAY_ARROW,
             on_click=self._run_selected_operation,
             style=ft.ButtonStyle(
@@ -125,10 +132,60 @@ class MatrixOpsView:
                 shape=ft.RoundedRectangleBorder(radius=12),
             ),
         )
+        self._transpose_dropdown = ft.Dropdown(
+            label="Propiedad / traspuesta",
+            value=transpose_ops[0][0],
+            options=[ft.dropdown.Option(key, label) for key, label in transpose_ops],
+            width=260,
+        )
+        self._transpose_button = ft.FilledButton(
+            "Evaluar propiedad",
+            icon=icons.CHECK_CIRCLE,
+            on_click=self._run_selected_transpose,
+            style=ft.ButtonStyle(
+                bgcolor={ft.ControlState.DEFAULT: SECONDARY_COLOR},
+                color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
+                overlay_color={ft.ControlState.HOVERED: PRIMARY_COLOR},
+                shape=ft.RoundedRectangleBorder(radius=12),
+            ),
+        )
+        self._verify_button = ft.TextButton(
+            "Verificar todas las propiedades",
+            icon=icons.FACT_CHECK,
+            on_click=self._run_verify,
+            style=ft.ButtonStyle(color={ft.ControlState.DEFAULT: PRIMARY_COLOR}),
+        )
 
-        actions = ft.Row(
-            spacing=12,
-            controls=[self._operation_dropdown, self._execute_button],
+        ops_section = ft.Column(
+            spacing=8,
+            controls=[
+                ft.Text("Operaciones básicas", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                self._operation_dropdown,
+                self._execute_button,
+            ],
+        )
+        transpose_section = ft.Column(
+            spacing=8,
+            controls=[
+                ft.Text("Traspuestas y propiedades", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                self._transpose_dropdown,
+                self._transpose_button,
+            ],
+        )
+        actions = ft.ResponsiveRow(
+            spacing=16,
+            run_spacing=16,
+            controls=[
+                ft.Container(col={"xs": 12, "md": 6}, content=ops_section),
+                ft.Container(col={"xs": 12, "md": 6}, content=transpose_section),
+                ft.Container(
+                    col={"xs": 12},
+                    content=ft.Row(
+                        alignment=ft.MainAxisAlignment.END,
+                        controls=[self._verify_button],
+                    ),
+                ),
+            ],
         )
 
         self._steps_button = ft.TextButton(
@@ -336,6 +393,96 @@ class MatrixOpsView:
             "(A * B)^T = B^T * A^T",
         )
 
+    def _run_transpose_scalar_sum(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            B = self._collect_matrix(self._b_cells)
+            alpha = self._parse_alpha()
+            if alpha is None:
+                raise ValueError(f"Define {ALPHA} para evaluar la propiedad.")
+            sum_res = ops.add(A, B)
+            scaled_sum = ops.scalar_mult(alpha, sum_res.result)
+            left = ops.transpose(scaled_sum.result)
+            tA = ops.transpose(A)
+            tB = ops.transpose(B)
+            sum_transpose = ops.add(tA.result, tB.result)
+            right = ops.scalar_mult(alpha, sum_transpose.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = left.result == right.result
+        self._render_transpose_property(
+            f"({ALPHA}(A + B))^T",
+            [
+                ("Pasos de A + B", sum_res.steps),
+                (f"Pasos de {ALPHA} * (A + B)", scaled_sum.steps),
+                ("Pasos de la traspuesta", left.steps),
+                ("Pasos de A^T + B^T", sum_transpose.steps),
+                (f"Pasos de {ALPHA} * (A^T + B^T)", right.steps),
+            ],
+            [
+                (f"({ALPHA}(A + B))^T", left.result),
+                ("A^T", tA.result),
+                ("B^T", tB.result),
+                ("A^T + B^T", sum_transpose.result),
+                (f"{ALPHA} * (A^T + B^T)", right.result),
+            ],
+            holds,
+            f"({ALPHA}(A + B))^T = {ALPHA}(A^T + B^T)",
+        )
+
+    def _run_transpose_double(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            tA = ops.transpose(A)
+            ttA = ops.transpose(tA.result)
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        holds = ttA.result == A
+        self._render_transpose_property(
+            "(A^T)^T",
+            [
+                ("Pasos de A^T", tA.steps),
+                ("Pasos de (A^T)^T", ttA.steps),
+            ],
+            [
+                ("A", A),
+                ("A^T", tA.result),
+                ("(A^T)^T", ttA.result),
+            ],
+            holds,
+            "(A^T)^T = A",
+        )
+
+    def _run_rank_property(self) -> None:
+        try:
+            A = self._collect_matrix(self._a_cells)
+            tA = ops.transpose(A)
+            rank_a = ops.rank(A, "A")
+            rank_at = ops.rank(tA.result, "A^T")
+        except Exception as exc:
+            self._show_error(str(exc))
+            return
+        rank_value = rank_a.result[0][0]
+        rank_t_value = rank_at.result[0][0]
+        holds = rank_value == rank_t_value
+        self._render_transpose_property(
+            "r(A) = r(A^T)",
+            [
+                ("Pasos para r(A)", rank_a.steps),
+                ("Pasos para r(A^T)", rank_at.steps),
+            ],
+            [
+                ("A", A),
+                ("A^T", tA.result),
+                ("r(A)", [[rank_value]]),
+                ("r(A^T)", [[rank_t_value]]),
+            ],
+            holds,
+            "r(A) = r(A^T)",
+        )
+
     def _run_verify(self) -> None:
         try:
             A = self._collect_matrix(self._a_cells)
@@ -368,13 +515,6 @@ class MatrixOpsView:
             "sub": self._run_sub,
             "scalar": self._run_scalar,
             "mul": self._run_mul,
-            "at": lambda: self._run_transpose("A"),
-            "bt": lambda: self._run_transpose("B"),
-            "sum_t": self._run_transpose_sum,
-            "diff_t": self._run_transpose_diff,
-            "scalar_t": self._run_transpose_scalar,
-            "prod_t": self._run_transpose_product,
-            "verify": self._run_verify,
         }
         action = mapping.get(op)
         if action is None:
@@ -382,11 +522,30 @@ class MatrixOpsView:
             return
         action()
 
+    def _run_selected_transpose(self, _event) -> None:
+        op = self._transpose_dropdown.value if self._transpose_dropdown else "at"
+        mapping = {
+            "at": lambda: self._run_transpose("A"),
+            "bt": lambda: self._run_transpose("B"),
+            "sum_t": self._run_transpose_sum,
+            "diff_t": self._run_transpose_diff,
+            "scalar_t": self._run_transpose_scalar,
+            "scalar_sum_t": self._run_transpose_scalar_sum,
+            "prod_t": self._run_transpose_product,
+            "double_t": self._run_transpose_double,
+            "rank_t": self._run_rank_property,
+        }
+        action = mapping.get(op)
+        if action is None:
+            self._show_error("Selecciona una propiedad válida.")
+            return
+        action()
+
 
     # --------------- presentación ---------------
     def _render_placeholder(self) -> None:
         self._result_container.controls.clear()
-        self._result_container.controls.append(ft.Text("Elige una operación para ver los pasos.", color=TEXT_MUTED))
+        self._result_container.controls.append(ft.Text("Elige una operación o propiedad para ver los pasos.", color=TEXT_MUTED))
         self._safe_update(self._result_container)
         self._set_steps([])
 
