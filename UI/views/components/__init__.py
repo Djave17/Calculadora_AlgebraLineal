@@ -10,12 +10,14 @@ from .matrix_ops_view import MatrixOpsView
 from .transpose_view import TransposeView
 from .matrix_identities_view import MatrixIdentitiesView
 from .matrix_inverse_view import MatrixInverseView
+from .determinant_view import DeterminantView
 from .custom_config_panels import (
     MatrixOpsConfigPanel,
     TransposeConfigPanel,
     VectorPropertiesConfigPanel,
     MatrixIdentitiesConfigPanel,
     MatrixInverseConfigPanel,
+    DeterminantConfigPanel,
 )
 
 __all__ = [
@@ -29,9 +31,11 @@ __all__ = [
     "TransposeView",
     "MatrixIdentitiesView",
     "MatrixInverseView",
+    "DeterminantView",
     "MatrixOpsConfigPanel",
     "TransposeConfigPanel",
     "VectorPropertiesConfigPanel",
     "MatrixIdentitiesConfigPanel",
     "MatrixInverseConfigPanel",
+    "DeterminantConfigPanel",
 ]

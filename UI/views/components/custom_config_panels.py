@@ -7,7 +7,7 @@ import flet as ft
 from ...styles import PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED, BORDER_COLOR
 from flet import Colors as colors
 from ...methods import MethodInfo
-from .determinant_view import recommend_method as compute_recommended_method
+from .determinant_view import recommend_method as recommend_determinant_method
 
 
 class _BaseConfigPanel:
@@ -247,14 +247,17 @@ class MatrixOpsConfigPanel(_BaseConfigPanel):
         return self._rows_a, self._cols_a, self._rows_b, self._cols_b, self._alpha
 
 
+
+
+
 class DeterminantConfigPanel(_BaseConfigPanel):
     MIN_ORDER = 1
     MAX_ORDER = 6
-    METHOD_OPTIONS: tuple[tuple[str, str, str], ...] = (
-        ("cofactors", "Expansión por cofactores", "Válido para cualquier n×n; referencia general."),
-        ("cramer", "Método de Cramer", "Solo práctico hasta 2×2 (orden ≤ 2)."),
-        ("sarrus", "Regla de Sarrus", "Aplicable únicamente a matrices 3×3."),
-    )
+    METHOD_INFO: dict[str, tuple[str, str]] = {
+        "cramer": ("Metodo de Cramer", "Para sistemas lineales pequenos o ilustrativos."),
+        "sarrus": ("Regla de Sarrus", "Solo aplicable a matrices de 3x3."),
+        "cofactors": ("Expansion por Cofactores", "Aplica para cualquier matriz cuadrada."),
+    }
 
     def __init__(
         self,
@@ -266,16 +269,16 @@ class DeterminantConfigPanel(_BaseConfigPanel):
     ) -> None:
         super().__init__(method)
         self._order = 3
-        self._auto_recommended = compute_recommended_method(self._order)
-        self._selected_method = self._auto_recommended
         self._on_order_change = on_order_change
         self._on_method_change = on_method_change
         self._on_resolve = on_resolve
         self._on_clear = on_clear
         self._order_field: ft.TextField | None = None
+        self._method_title: ft.Text | None = None
+        self._method_detail: ft.Text | None = None
         self._method_hint: ft.Text | None = None
-        self._method_group: ft.RadioGroup | None = None
         self._updating = False
+        self._recommended_method = recommend_determinant_method(self._order)
 
     def _build(self) -> ft.Container:
         header = self._header()
@@ -291,20 +294,23 @@ class DeterminantConfigPanel(_BaseConfigPanel):
             on_submit=self._handle_order_change,
         )
 
+        self._method_title = ft.Text("", size=14, weight=ft.FontWeight.W_600, color=TEXT_DARK)
+        self._method_detail = ft.Text("", size=12, color=TEXT_MUTED)
         self._method_hint = ft.Text("", size=11, color=TEXT_MUTED)
 
-        radios = [
-            ft.Radio(
-                value=method_id,
-                label=f"{title} — {detail}",
-                fill_color=PRIMARY_COLOR,
-            )
-            for method_id, title, detail in self.METHOD_OPTIONS
-        ]
-        self._method_group = ft.RadioGroup(
-            content=ft.Column(spacing=8, controls=radios),
-            value=self._selected_method,
-            on_change=self._handle_method_change,
+        method_card = ft.Container(
+            bgcolor="#f1f5ff",
+            border=ft.border.all(1, color=BORDER_COLOR),
+            border_radius=16,
+            padding=ft.Padding(16, 16, 16, 16),
+            content=ft.Column(
+                spacing=6,
+                controls=[
+                    self._method_title,
+                    self._method_detail,
+                    self._method_hint,
+                ],
+            ),
         )
 
         actions = ft.Column(
@@ -320,8 +326,7 @@ class DeterminantConfigPanel(_BaseConfigPanel):
             controls=[
                 header,
                 self._order_field,
-                self._method_hint,
-                self._method_group,
+                method_card,
                 actions,
             ],
         )
@@ -333,85 +338,68 @@ class DeterminantConfigPanel(_BaseConfigPanel):
             padding=ft.Padding(20, 20, 20, 20),
             content=body,
         )
-        self._update_hint()
+        self._refresh_method_info()
         return container
 
     def _handle_order_change(self, _event) -> None:
         if self._updating:
             return
-        value = self._order_field.value if self._order_field else str(self._order)
+        value = self._parse_order(self._order_field.value if self._order_field else None)
+        self._set_order_internal(value, emit=True)
+
+    def _parse_order(self, value: str | None) -> int:
         try:
             parsed = int(value or self._order)
         except (TypeError, ValueError):
             parsed = self._order
-        self._set_order_internal(parsed, trigger_callbacks=True)
+        return max(self.MIN_ORDER, min(self.MAX_ORDER, parsed))
 
-    def _handle_method_change(self, _event) -> None:
-        if self._updating:
-            return
-        selected = self._method_group.value if self._method_group else self._selected_method
-        self._selected_method = selected or self._auto_recommended
-        self._update_hint()
-        self._notify_method_change()
+    def set_method(self, method: MethodInfo) -> None:
+        super().set_method(method)
+        self._refresh_method_info()
 
     def set_order(self, order: int) -> None:
-        self._set_order_internal(order, trigger_callbacks=False)
+        self._set_order_internal(order, emit=False)
+
+    def _set_order_internal(self, order: int, *, emit: bool) -> None:
+        clamped = max(self.MIN_ORDER, min(self.MAX_ORDER, order))
+        if not emit and clamped == self._order:
+            return
+        self._order = clamped
+        self._recommended_method = recommend_determinant_method(self._order)
+
+        self._updating = True
+        if self._order_field:
+            self._order_field.value = str(self._order)
+            self._safe_update(self._order_field)
+        self._updating = False
+
+        self._refresh_method_info()
+
+        if emit and self._on_order_change:
+            self._on_order_change(self._order)
+        if self._on_method_change:
+            self._on_method_change(self._recommended_method)
 
     def order(self) -> int:
         return self._order
 
     def recommended_method(self) -> str:
-        return self._selected_method or self._auto_recommended
+        return self._recommended_method
 
-    def set_selected_method(self, method_id: str) -> None:
-        if method_id not in {item[0] for item in self.METHOD_OPTIONS}:
-            return
-        self._selected_method = method_id
-        if self._method_group:
-            self._updating = True
-            self._method_group.value = method_id
-            self._safe_update(self._method_group)
-            self._updating = False
-        self._update_hint()
-
-    def _set_order_internal(self, order: int, *, trigger_callbacks: bool) -> None:
-        clamped = max(self.MIN_ORDER, min(self.MAX_ORDER, order))
-        order_changed = clamped != self._order
-        self._order = clamped
-        self._auto_recommended = compute_recommended_method(self._order)
-        if order_changed or trigger_callbacks:
-            self._selected_method = self._auto_recommended
-        self._updating = True
-        if self._order_field:
-            self._order_field.value = str(self._order)
-            self._safe_update(self._order_field)
-        if self._method_group:
-            self._method_group.value = self._selected_method
-            self._safe_update(self._method_group)
-        self._updating = False
-        self._update_hint()
-        if trigger_callbacks:
-            if self._on_order_change:
-                self._on_order_change(self._order)
-            self._notify_method_change()
-
-    def _notify_method_change(self) -> None:
-        if self._on_method_change:
-            self._on_method_change(self.recommended_method())
-
-    def _update_hint(self) -> None:
-        labels = {method_id: title for method_id, title, _ in self.METHOD_OPTIONS}
-        recommended_label = labels.get(self._auto_recommended, self._auto_recommended)
-        if self._selected_method == self._auto_recommended:
-            message = f"Sugerencia automática: {recommended_label} para n = {self._order}."
-        else:
-            selected_label = labels.get(self._selected_method, self._selected_method)
-            message = (
-                f"Sugerencia automática: {recommended_label} para n = {self._order}. "
-                f"Seleccionado manualmente: {selected_label}."
-            )
+    def _refresh_method_info(self) -> None:
+        title, detail = self.METHOD_INFO.get(
+            self._recommended_method,
+            (self._recommended_method, "Metodo asignado automaticamente."),
+        )
+        if self._method_title:
+            self._method_title.value = title
+            self._safe_update(self._method_title)
+        if self._method_detail:
+            self._method_detail.value = detail
+            self._safe_update(self._method_detail)
         if self._method_hint:
-            self._method_hint.value = message
+            self._method_hint.value = f"Asignado automaticamente para n = {self._order}."
             self._safe_update(self._method_hint)
 
 

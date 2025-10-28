@@ -89,17 +89,15 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
     ),
     MethodCategory(
         id="matrices",
-        label="Álgebra matricial",
+        label="Algebra matricial",
         methods=(
             MethodInfo(
                 id="matrix_ops",
                 label="Operaciones de matrices",
                 icon="TABLE_VIEW",
                 available=True,
-                description=(
-                    "Suma, resta, α·A, producto A·B y traspuestas, con validación de dimensiones y pasos."
-                ),
-                category="Álgebra matricial",
+                description="Suma, resta, k*A, producto A*B y traspuestas, con validacion de dimensiones y pasos.",
+                category="Algebra matricial",
                 view_type="matrix_ops",
                 shows_config_panel=False,
             ),
@@ -108,10 +106,8 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 label="Matriz traspuesta",
                 icon="SWAP_HORIZ",
                 available=True,
-                description=(
-                    "Calcula A^T mostrando el intercambio de filas por columnas y verifica propiedades básicas."
-                ),
-                category="Álgebra matricial",
+                description="Calcula A^T mostrando el intercambio de filas por columnas y verifica propiedades basicas.",
+                category="Algebra matricial",
                 view_type="matrix_transpose",
                 shows_config_panel=False,
             ),
@@ -120,13 +116,21 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
                 label="Inversa de matriz",
                 icon="AUTO_GRAPH",
                 available=True,
-                description=(
-                    "Calcula A^-1 mediante Gauss-Jordan, mostrando [A | I] → [I | A^-1] y verificaciones teóricas."
-                ),
-                category="Álgebra matricial",
-                icon_text="A⁻¹",
+                description="Calcula A^-1 mediante Gauss-Jordan, mostrando [A | I] -> [I | A^-1] y verificaciones teoricas.",
+                category="Algebra matricial",
+                icon_text="A^-1",
                 view_type="matrix_inverse",
                 shows_config_panel=False,
+            ),
+            MethodInfo(
+                id="matrix_determinant",
+                label="Determinante de matriz",
+                icon="CALCULATE",
+                available=True,
+                description="Calcula det(A) aplicando automaticamente Cramer, Sarrus o cofactores segun la dimension.",
+                category="Algebra matricial",
+                view_type="matrix_determinant",
+                shows_config_panel=True,
             ),
         ),
     ),

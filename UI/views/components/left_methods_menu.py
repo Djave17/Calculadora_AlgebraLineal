@@ -136,9 +136,12 @@ class MethodButton:
                 size=14,
                 weight=ft.FontWeight.BOLD,
                 color=text_color,
+                no_wrap=True,
+                max_lines=1,
+                text_align=ft.TextAlign.CENTER,
             )
             icon = ft.Container(
-                width=36,
+                width=40,
                 height=36,
                 alignment=ft.alignment.center,
                 border_radius=12,

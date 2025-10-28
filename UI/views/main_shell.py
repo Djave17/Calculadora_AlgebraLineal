@@ -272,6 +272,11 @@ class MainShell:
             self._matrix_inverse_view = MatrixInverseView(self.page)
         return self._matrix_inverse_view
 
+    def _ensure_determinant_view(self) -> DeterminantView:
+        if self._determinant_view is None:
+            self._determinant_view = DeterminantView(self.page)
+        return self._determinant_view
+
     def _ensure_matrix_ops_view(self) -> MatrixOpsView:
         if self._matrix_ops_view is None:
             self._matrix_ops_view = MatrixOpsView(self.page)
@@ -440,11 +445,6 @@ class MainShell:
             )
         return self._matrix_inverse_config
 
-    def _ensure_determinant_view(self) -> DeterminantView:
-        if self._determinant_view is None:
-            self._determinant_view = DeterminantView(self.page)
-        return self._determinant_view
-
     def _ensure_determinant_config(self, method: MethodInfo) -> DeterminantConfigPanel:
         if self._determinant_config is None:
             self._determinant_config = DeterminantConfigPanel(
@@ -509,13 +509,10 @@ class MainShell:
         view.set_order(order)
         if self._determinant_config:
             self._determinant_config.set_order(view.order())
-            self._handle_determinant_method_recommendation(self._determinant_config.recommended_method())
 
     def _handle_determinant_method_recommendation(self, method_id: str) -> None:
         view = self._ensure_determinant_view()
         view.set_recommended_method(method_id)
-        if self._determinant_config:
-            self._determinant_config.set_selected_method(method_id)
 
     def _handle_determinant_resolve(self) -> None:
         view = self._ensure_determinant_view()
