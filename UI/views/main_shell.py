@@ -20,6 +20,7 @@ from .components import (
     TransposeView,
     MatrixIdentitiesView,
     MatrixInverseView,
+    DeterminantView,
 )
 from .components.steps_dialog import show_steps_dialog
 from .components.custom_config_panels import (
@@ -27,6 +28,7 @@ from .components.custom_config_panels import (
     TransposeConfigPanel,
     VectorPropertiesConfigPanel,
     MatrixInverseConfigPanel,
+    DeterminantConfigPanel,
 )
 
 
@@ -65,11 +67,13 @@ class MainShell:
         self._transpose_view: Optional[TransposeView] = None
         self._matrix_identities_view: Optional[MatrixIdentitiesView] = None
         self._matrix_inverse_view: Optional[MatrixInverseView] = None
+        self._determinant_view: Optional[DeterminantView] = None
 
         self._matrix_ops_config: Optional[MatrixOpsConfigPanel] = None
         self._transpose_config_panel: Optional[TransposeConfigPanel] = None
         self._vector_properties_config: Optional[VectorPropertiesConfigPanel] = None
         self._matrix_inverse_config: Optional[MatrixInverseConfigPanel] = None
+        self._determinant_config: Optional[DeterminantConfigPanel] = None
         self._transpose_view: Optional[TransposeView] = None
 
         self._config_panel: Optional[RightConfigPanel] = None
@@ -341,6 +345,20 @@ class MainShell:
                 self._config_visible = True
                 self._safe_update(self._config_container)
 
+        elif method.view_type == "matrix_determinant":
+            view = self._ensure_determinant_view()
+            config = self._ensure_determinant_config(method)
+            config.set_method(method)
+            config.set_order(view.order())
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.content = config.view
+                self._config_container.visible = True
+                self._config_visible = True
+                self._safe_update(self._config_container)
+
         elif method.view_type == "matrix_ops":
             view = self._ensure_matrix_ops_view()
             config = self._ensure_matrix_ops_config(method)
@@ -422,6 +440,25 @@ class MainShell:
             )
         return self._matrix_inverse_config
 
+    def _ensure_determinant_view(self) -> DeterminantView:
+        if self._determinant_view is None:
+            self._determinant_view = DeterminantView(self.page)
+        return self._determinant_view
+
+    def _ensure_determinant_config(self, method: MethodInfo) -> DeterminantConfigPanel:
+        if self._determinant_config is None:
+            self._determinant_config = DeterminantConfigPanel(
+                method,
+                self._handle_determinant_order_change,
+                self._handle_determinant_method_recommendation,
+                self._handle_determinant_resolve,
+                self._handle_determinant_clear,
+            )
+        else:
+            self._determinant_config.set_method(method)
+        self._handle_determinant_method_recommendation(self._determinant_config.recommended_method())
+        return self._determinant_config
+
     def _ensure_matrix_ops_config(self, method: MethodInfo) -> MatrixOpsConfigPanel:
         if self._matrix_ops_config is None:
             self._matrix_ops_config = MatrixOpsConfigPanel(method, self._handle_matrix_ops_config_change)
@@ -466,6 +503,30 @@ class MainShell:
         view.clear_fields()
         if self._matrix_inverse_config:
             self._matrix_inverse_config.set_order(view.order())
+
+    def _handle_determinant_order_change(self, order: int) -> None:
+        view = self._ensure_determinant_view()
+        view.set_order(order)
+        if self._determinant_config:
+            self._determinant_config.set_order(view.order())
+            self._handle_determinant_method_recommendation(self._determinant_config.recommended_method())
+
+    def _handle_determinant_method_recommendation(self, method_id: str) -> None:
+        view = self._ensure_determinant_view()
+        view.set_recommended_method(method_id)
+        if self._determinant_config:
+            self._determinant_config.set_selected_method(method_id)
+
+    def _handle_determinant_resolve(self) -> None:
+        view = self._ensure_determinant_view()
+        view.resolve()
+
+    def _handle_determinant_clear(self) -> None:
+        view = self._ensure_determinant_view()
+        view.clear_fields()
+        if self._determinant_config:
+            self._determinant_config.set_order(view.order())
+            self._handle_determinant_method_recommendation(self._determinant_config.recommended_method())
 
     def _handle_matrix_ops_config_change(self, rows_a: int, cols_a: int, rows_b: int, cols_b: int, alpha: str) -> None:
         view = self._ensure_matrix_ops_view()
