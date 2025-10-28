@@ -9,6 +9,7 @@ from ..base import (
     DeterminantTerm,
     ensure_square_matrix,
     extend_matrix_with_columns,
+    extend_matrix_with_rows,
     to_fraction_matrix,
 )
 
@@ -23,22 +24,28 @@ def compute_determinant_sarrus(
     if len(matrix) != SARRUS_ORDER:
         raise ValueError("La regla de Sarrus solo aplica a matrices de 3x3.")
 
-    extended = extend_matrix_with_columns(matrix, 2)
+    extended_columns = extend_matrix_with_columns(matrix, 2)
+    extended_rows = extend_matrix_with_rows(matrix, 2)
     steps: List[DeterminantStep] = [
         DeterminantStep(
             label="Paso 0",
             description=(
                 "Se replica la matriz anexando las dos primeras columnas al final para visualizar diag. descendentes y ascendentes."
             ),
-            snapshot=[row[:] for row in extended],
-        )
+            snapshot=[row[:] for row in extended_columns],
+        ),
+        DeterminantStep(
+            label="Paso 0 · vista por filas",
+            description="Visualizacion complementaria: se repiten las dos primeras filas debajo para mostrar la matriz ampliada clasica.",
+            snapshot=[row[:] for row in extended_rows],
+        ),
     ]
 
     positive_terms, positive_sum, positive_steps = _diagonal_terms(
-        matrix, extended, forward=True
+        matrix, extended_columns, forward=True
     )
     negative_terms, negative_sum, negative_steps = _diagonal_terms(
-        matrix, extended, forward=False
+        matrix, extended_columns, forward=False
     )
 
     steps.extend(positive_steps)
