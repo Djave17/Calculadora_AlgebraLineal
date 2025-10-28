@@ -34,6 +34,24 @@ METHOD_META: Dict[str, Dict[str, str]] = {
     },
 }
 
+METHOD_STEPS_META: Dict[str, Dict[str, str]] = {
+    "cofactors": {
+        "icon": icons.TABLE_ROWS,
+        "title": "Desarrollo por cofactores",
+        "subtitle": "Se muestran los cofactores evaluados y el acumulado por nivel.",
+    },
+    "cramer": {
+        "icon": icons.FORMAT_LIST_NUMBERED,
+        "title": "Permutaciones evaluadas (metodo de Cramer)",
+        "subtitle": "Cada permutacion aporta un producto firmado al determinante.",
+    },
+    "sarrus": {
+        "icon": icons.FILTER_3,
+        "title": "Diagonales calculadas (regla de Sarrus)",
+        "subtitle": "Se detallan las diagonales descendentes y ascendentes con sus productos.",
+    },
+}
+
 
 
 
@@ -408,36 +426,7 @@ class DeterminantView:
                             ],
                         ),
                     ),
-                    ft.Container(
-                        bgcolor="#f2f6ff",
-                        border=ft.border.all(1, color="#8da2ff"),
-                        border_radius=14,
-                        padding=ft.Padding(14, 14, 14, 14),
-                        content=ft.Column(
-                            spacing=8,
-                            controls=[
-                                ft.Row(
-                                    spacing=10,
-                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                    controls=[
-                                        ft.Icon(icons.FORMAT_LIST_NUMBERED, color=PRIMARY_COLOR, size=20),
-                                        ft.Text(
-                                            "Pasos registrados",
-                                            size=13,
-                                            weight=ft.FontWeight.BOLD,
-                                            color=TEXT_DARK,
-                                        ),
-                                    ],
-                                ),
-                                ft.Text(
-                                    "Cada paso muestra el subtotal acumulado y, cuando aplica, la matriz intermedia.",
-                                    size=12,
-                                    color=TEXT_MUTED,
-                                ),
-                                self._build_steps_section(method.steps),
-                            ],
-                        ),
-                    ),
+                    self._build_method_operations(method),
                     *warning_cards,
                 ],
             )
@@ -467,13 +456,31 @@ class DeterminantView:
                     ft.Column(
                         spacing=2,
                         controls=[
-                            ft.Text(f"({prop.code}) {prop.label}", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                            ft.Text(prop.label, weight=ft.FontWeight.W_600, color=TEXT_DARK, size=13),
                             ft.Text(badge_text, size=10, color=TEXT_MUTED),
                         ],
+                    ),
+                    ft.Container(
+                        bgcolor="#eef0ff" if prop.holds else "#fdecea",
+                        border_radius=10,
+                        padding=ft.Padding(6, 4, 6, 4),
+                        content=ft.Text(prop.code, size=10, color=icon_color, weight=ft.FontWeight.BOLD),
                     ),
                 ],
             )
             body_controls: List[ft.Control] = [ft.Text(prop.message, size=12, color=TEXT_MUTED)]
+            if prop.steps:
+                step_texts = [
+                    ft.Text(f"{index}. {step}", size=12, color=TEXT_DARK)
+                    for index, step in enumerate(prop.steps, start=1)
+                ]
+                body_controls.append(
+                    ft.ExpansionTile(
+                        title=ft.Text("Verificación paso a paso", size=12, color=TEXT_DARK),
+                        controls=[ft.Column(spacing=4, controls=step_texts)],
+                        icon_color=PRIMARY_COLOR,
+                    )
+                )
             if prop.examples:
                 example_tiles: List[ft.Control] = []
                 for label, matrix in prop.examples.items():
@@ -495,6 +502,37 @@ class DeterminantView:
                 )
             )
         return items
+
+    def _build_method_operations(self, method: DeterminantMethodResultVM) -> ft.Control:
+        meta = METHOD_STEPS_META.get(
+            method.method_id,
+            {
+                "icon": icons.FORMAT_LIST_NUMBERED,
+                "title": "Desarrollo paso a paso",
+                "subtitle": "Detalle de cada operación realizada por el método seleccionado.",
+            },
+        )
+        header_controls: List[ft.Control] = [
+            ft.Row(
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                controls=[
+                    ft.Icon(meta["icon"], color=PRIMARY_COLOR, size=20),
+                    ft.Text(meta["title"], size=13, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                ],
+            )
+        ]
+        subtitle_text = meta.get("subtitle")
+        if subtitle_text:
+            header_controls.append(ft.Text(subtitle_text, size=12, color=TEXT_MUTED))
+        header_controls.append(self._build_steps_section(method.steps))
+        return ft.Container(
+            bgcolor="#f2f6ff",
+            border=ft.border.all(1, color="#8da2ff"),
+            border_radius=14,
+            padding=ft.Padding(14, 14, 14, 14),
+            content=ft.Column(spacing=8, controls=header_controls),
+        )
 
     def _build_terms_section(self, terms: Sequence[DeterminantTermVM]) -> ft.Control:
         if not terms:
@@ -533,32 +571,29 @@ class DeterminantView:
     def _build_steps_section(self, steps: Sequence[DeterminantStepVM]) -> ft.Control:
         if not steps:
             return ft.Text("No se registraron pasos para este método.", color=TEXT_MUTED, size=12)
-        cards: List[ft.Control] = []
-        for step in steps:
-            controls: List[ft.Control] = [
-                ft.Text(step.label, weight=ft.FontWeight.W_600, color=TEXT_DARK, size=12),
-                ft.Text(step.description, size=12, color=TEXT_MUTED),
-            ]
+        tiles: List[ft.Control] = []
+        for index, step in enumerate(steps, start=1):
+            tile_body: List[ft.Control] = [ft.Text(step.description, size=12, color=TEXT_MUTED)]
             if step.subtotal is not None:
-                controls.append(ft.Text(f"Subtotal acumulado: {step.subtotal}", size=12, color=TEXT_MUTED))
+                tile_body.append(ft.Text(f"Acumulado: {step.subtotal}", size=12, color=PRIMARY_COLOR))
             if step.snapshot:
-                controls.append(
-                    ft.ExpansionTile(
-                        title=ft.Text("Detalle matricial", size=12, color=TEXT_DARK),
-                        controls=[self._build_matrix_grid(step.snapshot)],
-                        icon_color=PRIMARY_COLOR,
+                tile_body.append(
+                    ft.Container(
+                        bgcolor="#ffffff",
+                        border=ft.border.all(1, color=BORDER_COLOR),
+                        border_radius=10,
+                        padding=ft.Padding(8, 8, 8, 8),
+                        content=self._build_matrix_grid(step.snapshot),
                     )
                 )
-            cards.append(
-                ft.Container(
-                    bgcolor="#f9f9ff",
-                    border=ft.border.all(1, color=BORDER_COLOR),
-                    border_radius=12,
-                    padding=ft.Padding(12, 12, 12, 12),
-                    content=ft.Column(spacing=6, controls=controls),
+            tiles.append(
+                ft.ExpansionTile(
+                    title=ft.Text(f"{index}. {step.label}", size=12, color=TEXT_DARK),
+                    icon_color=PRIMARY_COLOR,
+                    controls=[ft.Column(spacing=6, controls=tile_body)],
                 )
             )
-        return ft.Column(spacing=8, controls=cards)
+        return ft.Column(spacing=6, controls=tiles)
 
     def _build_matrix_grid(self, matrix: Sequence[Sequence[Fraction]]) -> ft.Column:
         rows: List[ft.Control] = []

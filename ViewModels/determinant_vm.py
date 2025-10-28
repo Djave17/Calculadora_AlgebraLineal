@@ -62,6 +62,7 @@ class DeterminantPropertyVM:
     verified: bool
     message: str
     examples: Dict[str, List[List[Fraction]]]
+    steps: List[str]
 
 
 @dataclass
@@ -211,6 +212,7 @@ class DeterminantViewModel:
                 verified=result.verified,
                 message=result.message,
                 examples={key: [row[:] for row in value] for key, value in result.examples.items()},
+                steps=list(result.steps),
             )
             for result in property_results
         ]
