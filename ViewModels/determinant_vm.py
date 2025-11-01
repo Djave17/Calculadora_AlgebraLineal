@@ -39,6 +39,39 @@ class DeterminantStepVM:
 
 
 @dataclass
+class MatrixMultiplicationTermVM:
+    left: Fraction
+    right: Fraction
+    product: Fraction
+
+
+@dataclass
+class MatrixMultiplicationCellVM:
+    row: int
+    col: int
+    terms: List[MatrixMultiplicationTermVM]
+    result: Fraction
+    expected: Fraction
+
+
+@dataclass
+class DeterminantMultiplicativeDetailVM:
+    left_label: str
+    right_label: str
+    product_label: str
+    expected_label: str
+    left_matrix: List[List[Fraction]]
+    right_matrix: List[List[Fraction]]
+    product_matrix: List[List[Fraction]]
+    expected_matrix: List[List[Fraction]]
+    det_left: Fraction
+    det_right: Fraction
+    det_product: Fraction
+    det_expected: Fraction
+    steps: List[MatrixMultiplicationCellVM] = field(default_factory=list)
+
+
+@dataclass
 class DeterminantMethodResultVM:
     method_id: str
     label: str
@@ -63,6 +96,7 @@ class DeterminantPropertyVM:
     message: str
     examples: Dict[str, List[List[Fraction]]]
     steps: List[str]
+    multiplication: DeterminantMultiplicativeDetailVM | None = None
 
 
 @dataclass
@@ -204,18 +238,55 @@ class DeterminantViewModel:
         determinant: Fraction,
     ) -> List[DeterminantPropertyVM]:
         property_results: List[DeterminantPropertyResult] = evaluate_determinant_properties(matrix, determinant)
-        return [
-            DeterminantPropertyVM(
-                code=result.code,
-                label=result.label,
-                holds=result.holds,
-                verified=result.verified,
-                message=result.message,
-                examples={key: [row[:] for row in value] for key, value in result.examples.items()},
-                steps=list(result.steps),
+        properties: List[DeterminantPropertyVM] = []
+        for result in property_results:
+            multiplication_detail: DeterminantMultiplicativeDetailVM | None = None
+            detail = result.multiplication_detail
+            if detail is not None:
+                multiplication_detail = DeterminantMultiplicativeDetailVM(
+                    left_label=detail.left_label,
+                    right_label=detail.right_label,
+                    product_label=detail.product_label,
+                    expected_label=detail.expected_label,
+                    left_matrix=[row[:] for row in detail.left_matrix],
+                    right_matrix=[row[:] for row in detail.right_matrix],
+                    product_matrix=[row[:] for row in detail.product_matrix],
+                    expected_matrix=[row[:] for row in detail.expected_matrix],
+                    det_left=detail.det_left,
+                    det_right=detail.det_right,
+                    det_product=detail.det_product,
+                    det_expected=detail.det_expected,
+                    steps=[
+                        MatrixMultiplicationCellVM(
+                            row=cell.row,
+                            col=cell.col,
+                            terms=[
+                                MatrixMultiplicationTermVM(
+                                    left=term.left,
+                                    right=term.right,
+                                    product=term.product,
+                                )
+                                for term in cell.terms
+                            ],
+                            result=cell.result,
+                            expected=cell.expected,
+                        )
+                        for cell in detail.steps
+                    ],
+                )
+            properties.append(
+                DeterminantPropertyVM(
+                    code=result.code,
+                    label=result.label,
+                    holds=result.holds,
+                    verified=result.verified,
+                    message=result.message,
+                    examples={key: [row[:] for row in value] for key, value in result.examples.items()},
+                    steps=list(result.steps),
+                    multiplication=multiplication_detail,
+                )
             )
-            for result in property_results
-        ]
+        return properties
 
     def _build_summary(self, determinant: Fraction) -> DeterminantSummaryVM:
         is_invertible = determinant != 0

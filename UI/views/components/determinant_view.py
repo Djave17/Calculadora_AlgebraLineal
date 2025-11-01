@@ -8,11 +8,13 @@ from flet import Icons as icons
 
 from ViewModels.determinant_vm import (
     DeterminantAnalysisVM,
+    DeterminantMultiplicativeDetailVM,
     DeterminantMethodResultVM,
     DeterminantPropertyVM,
     DeterminantStepVM,
     DeterminantTermVM,
     DeterminantViewModel,
+    MatrixMultiplicationCellVM,
 )
 
 from ...helpers import parse_matrix
@@ -481,6 +483,17 @@ class DeterminantView:
                         icon_color=PRIMARY_COLOR,
                     )
                 )
+            if prop.multiplication:
+                body_controls.append(
+                    ft.Container(
+                        bgcolor="#f2f6ff",
+                        border=ft.border.all(1, color="#8da2ff"),
+                        border_radius=12,
+                        padding=ft.Padding(12, 12, 12, 12),
+                        content=self._build_property_multiplication_detail(prop.multiplication),
+                    )
+                )
+
             if prop.examples:
                 example_tiles: List[ft.Control] = []
                 for label, matrix in prop.examples.items():
@@ -612,6 +625,121 @@ class DeterminantView:
             ]
             rows.append(ft.Row(cells, spacing=6))
         return ft.Column(spacing=4, controls=rows)
+
+
+    def _build_property_multiplication_detail(
+        self,
+        detail: DeterminantMultiplicativeDetailVM,
+    ) -> ft.Control:
+        det_matches = detail.det_product == detail.det_expected
+        message_color = PRIMARY_COLOR if det_matches else "#c62828"
+        rows_a = len(detail.left_matrix)
+        cols_a = len(detail.left_matrix[0]) if detail.left_matrix and detail.left_matrix[0] else 0
+        rows_b = len(detail.right_matrix)
+        cols_b = len(detail.right_matrix[0]) if detail.right_matrix and detail.right_matrix[0] else 0
+        dimension_text = ft.Text(
+            f"Producto {detail.left_label} * {detail.right_label}: dimensiones {rows_a}x{cols_a} y {rows_b}x{cols_b}.",
+            size=12,
+            color=TEXT_MUTED,
+        )
+        matrix_cards: List[ft.Control] = [
+            self._build_labeled_matrix_card(f"Matriz {detail.left_label}", detail.left_matrix),
+            self._build_labeled_matrix_card(f"Matriz {detail.right_label}", detail.right_matrix),
+            self._build_labeled_matrix_card(detail.product_label, detail.product_matrix, emphasize=det_matches),
+            self._build_labeled_matrix_card(detail.expected_label, detail.expected_matrix),
+        ]
+        matrices_column = ft.Container(
+            height=220,
+            content=ft.Column(
+                spacing=12,
+                controls=matrix_cards,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+        )
+        det_summary = ft.Text(
+            f"det({detail.product_label}) = {self._format_fraction(detail.det_product)} y det({detail.left_label}) * det({detail.right_label}) = {self._format_fraction(detail.det_expected)}",
+            color=message_color,
+            weight=ft.FontWeight.W_600,
+            size=12,
+        )
+        return ft.Column(
+            spacing=10,
+            controls=[
+                ft.Text(
+                    "Verificacion del producto AB para det(AB) = det(A) * det(B)",
+                    weight=ft.FontWeight.W_600,
+                    color=TEXT_DARK,
+                    size=12,
+                ),
+                det_summary,
+                dimension_text,
+                matrices_column,
+                self._build_multiplication_text_summary(detail.steps, detail.expected_label),
+            ],
+        )
+
+    def _build_multiplication_text_summary(
+        self,
+        steps: Sequence[MatrixMultiplicationCellVM],
+        expected_label: str,
+    ) -> ft.Control:
+        if not steps:
+            return ft.Text("No hay detalles de multiplicacion disponibles.", color=TEXT_MUTED, size=12)
+        lines: List[ft.Control] = [
+            ft.Text("Detalle de cada entrada C(i, j):", weight=ft.FontWeight.W_600, color=TEXT_DARK),
+        ]
+        for cell in steps:
+            terms_expr = " + ".join(
+                f"{self._format_fraction(term.left)}*{self._format_fraction(term.right)}"
+                for term in cell.terms
+            ) or "0"
+            result_line = (
+                f"C({cell.row + 1}, {cell.col + 1}) = {terms_expr} = {self._format_fraction(cell.result)}"
+            )
+            lines.append(ft.Text(result_line, size=12, color=TEXT_DARK))
+            expected_color = PRIMARY_COLOR if cell.result == cell.expected else "#c62828"
+            lines.append(
+                ft.Text(
+                    f"{expected_label}({cell.row + 1}, {cell.col + 1}) = {self._format_fraction(cell.expected)}",
+                    size=12,
+                    color=expected_color,
+                )
+            )
+        return ft.Column(spacing=4, controls=lines)
+
+    def _build_labeled_matrix_card(
+        self,
+        title: str,
+        matrix: Sequence[Sequence[Fraction]],
+        emphasize: bool = False,
+    ) -> ft.Control:
+        return ft.Column(
+            spacing=6,
+            controls=[
+                ft.Text(title, weight=ft.FontWeight.W_600, color=TEXT_DARK, size=12),
+                self._build_matrix_card(matrix, emphasize=emphasize),
+            ],
+        )
+
+    def _build_matrix_card(
+        self,
+        matrix: Sequence[Sequence[Fraction]],
+        emphasize: bool = False,
+    ) -> ft.Control:
+        return ft.Container(
+            bgcolor="#fffaf6" if emphasize else "#fff7f5",
+            border=ft.border.all(1, color=PRIMARY_COLOR if emphasize else BORDER_COLOR),
+            border_radius=14,
+            padding=ft.Padding(12, 12, 12, 12),
+            content=self._build_matrix_grid(matrix),
+        )
+
+    def _format_fraction(self, value: Fraction) -> str:
+        if isinstance(value, Fraction):
+            if value.denominator == 1:
+                return f"{value.numerator}"
+            return f"{value.numerator}/{value.denominator}"
+        return str(value)
 
     # --------------------------- Utilities --------------------------- #
     def _collect_matrix(self) -> List[List[Fraction]]:

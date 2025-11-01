@@ -9,6 +9,39 @@ from ..cofactores.metodoExpansioCofactores import compute_determinant_cofactors
 
 
 @dataclass
+class MultiplicationTermDetail:
+    left: Fraction
+    right: Fraction
+    product: Fraction
+
+
+@dataclass
+class MultiplicationCellDetail:
+    row: int
+    col: int
+    terms: List[MultiplicationTermDetail]
+    result: Fraction
+    expected: Fraction
+
+
+@dataclass
+class MultiplicativePropertyDetail:
+    left_label: str
+    right_label: str
+    product_label: str
+    expected_label: str
+    left_matrix: List[List[Fraction]]
+    right_matrix: List[List[Fraction]]
+    product_matrix: List[List[Fraction]]
+    expected_matrix: List[List[Fraction]]
+    det_left: Fraction
+    det_right: Fraction
+    det_product: Fraction
+    det_expected: Fraction
+    steps: List[MultiplicationCellDetail] = field(default_factory=list)
+
+
+@dataclass
 class DeterminantPropertyResult:
     code: str
     label: str
@@ -17,6 +50,7 @@ class DeterminantPropertyResult:
     message: str
     examples: Dict[str, List[List[Fraction]]] = field(default_factory=dict)
     steps: List[str] = field(default_factory=list)
+    multiplication_detail: MultiplicativePropertyDetail | None = None
 
 
 def evaluate_determinant_properties(
@@ -189,6 +223,7 @@ def _property_row_scaling(matrix: Sequence[Sequence[Fraction]], det_a: Fraction)
     )
 
 
+
 def _property_multiplicative(matrix: Sequence[Sequence[Fraction]], det_a: Fraction) -> DeterminantPropertyResult:
     identity = _identity_matrix(len(matrix))
     product = _matrix_multiply(matrix, identity)
@@ -198,6 +233,22 @@ def _property_multiplicative(matrix: Sequence[Sequence[Fraction]], det_a: Fracti
     message = (
         "Se eligio B = I (identidad) para verificar la propiedad. "
         f"det(A * I) = {det_product} y det(A) * det(I) = {det_a * det_identity}."
+    )
+    multiplication_steps = _compute_multiplication_steps(matrix, identity, matrix)
+    multiplication_detail = MultiplicativePropertyDetail(
+        left_label="A",
+        right_label="B = I",
+        product_label="AB",
+        expected_label="A esperada",
+        left_matrix=_copy_matrix(matrix),
+        right_matrix=identity,
+        product_matrix=_copy_matrix(product),
+        expected_matrix=_copy_matrix(matrix),
+        det_left=det_a,
+        det_right=det_identity,
+        det_product=det_product,
+        det_expected=det_a * det_identity,
+        steps=multiplication_steps,
     )
     proof_steps = [
         "Se toma la matriz identidad I como B.",
@@ -209,14 +260,14 @@ def _property_multiplicative(matrix: Sequence[Sequence[Fraction]], det_a: Fracti
     ]
     return DeterminantPropertyResult(
         code="P5",
-        label="Propiedad 5: det(AB) = det(A) × det(B).",
+        label="Propiedad 5: det(AB) = det(A) * det(B).",
         holds=holds,
         verified=True,
         message=message,
         examples={"A": _copy_matrix(matrix), "B": identity, "AB": product},
         steps=proof_steps,
+        multiplication_detail=multiplication_detail,
     )
-
 
 def _is_zero_vector(vector: Sequence[Fraction]) -> bool:
     return all(value == 0 for value in vector)
@@ -298,3 +349,38 @@ def _matrix_multiply(
 
 def _copy_matrix(matrix: Sequence[Sequence[Fraction]]) -> List[List[Fraction]]:
     return [list(row) for row in matrix]
+
+
+def _compute_multiplication_steps(
+    A: Sequence[Sequence[Fraction]],
+    B: Sequence[Sequence[Fraction]],
+    expected: Sequence[Sequence[Fraction]] | None = None,
+) -> List[MultiplicationCellDetail]:
+    steps: List[MultiplicationCellDetail] = []
+    if not A or not B:
+        return steps
+    rows_a = len(A)
+    cols_b = len(B[0]) if B and B[0] else 0
+    for i in range(rows_a):
+        for j in range(cols_b):
+            terms: List[MultiplicationTermDetail] = []
+            subtotal = Fraction(0)
+            for k in range(len(B)):
+                left = Fraction(A[i][k])
+                right = Fraction(B[k][j])
+                product_term = left * right
+                subtotal += product_term
+                terms.append(MultiplicationTermDetail(left=left, right=right, product=product_term))
+            expected_value = subtotal
+            if expected and i < len(expected) and j < len(expected[0]):
+                expected_value = Fraction(expected[i][j])
+            steps.append(
+                MultiplicationCellDetail(
+                    row=i,
+                    col=j,
+                    terms=terms,
+                    result=subtotal,
+                    expected=expected_value,
+                )
+            )
+    return steps
