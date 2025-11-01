@@ -38,6 +38,7 @@ class MultiplicativePropertyDetail:
     det_right: Fraction
     det_product: Fraction
     det_expected: Fraction
+    interpretation: str
     steps: List[MultiplicationCellDetail] = field(default_factory=list)
 
 
@@ -248,6 +249,10 @@ def _property_multiplicative(matrix: Sequence[Sequence[Fraction]], det_a: Fracti
         det_right=det_identity,
         det_product=det_product,
         det_expected=det_a * det_identity,
+        interpretation=(
+            f"Interpretacion: det(A) = {det_a}, por lo tanto "
+            + ("A es invertible." if det_a != 0 else "A no es invertible.")
+        ),
         steps=multiplication_steps,
     )
     proof_steps = [

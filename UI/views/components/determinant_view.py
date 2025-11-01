@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from fractions import Fraction
 from typing import Dict, List, Optional, Sequence
@@ -14,6 +14,7 @@ from ViewModels.determinant_vm import (
     DeterminantStepVM,
     DeterminantTermVM,
     DeterminantViewModel,
+    DeterminantSummaryVM,
     MatrixMultiplicationCellVM,
 )
 
@@ -97,6 +98,7 @@ class DeterminantView:
 
         self._summary_title = ft.Text("", size=14, weight=ft.FontWeight.BOLD, color=TEXT_DARK)
         self._summary_message = ft.Text("", size=12, color=TEXT_MUTED)
+        self._summary_details = ft.Text("", size=12, color=TEXT_MUTED)
         self._summary_container = ft.Container(
             visible=False,
             bgcolor=SURFACE_COLOR,
@@ -105,9 +107,40 @@ class DeterminantView:
             padding=ft.Padding(14, 14, 14, 14),
             content=ft.Column(
                 spacing=6,
-                controls=[self._summary_title, self._summary_message],
+                controls=[self._summary_title, self._summary_message, self._summary_details],
             ),
         )
+        self._show_methods_button = ft.TextButton(
+            "Ver desarrollo",
+            icon=icons.MENU_BOOK,
+            visible=False,
+            on_click=self._toggle_methods,
+        )
+        self._show_properties_button = ft.TextButton(
+            "Ver propiedades",
+            icon=icons.WIDGETS,
+            visible=False,
+            on_click=self._toggle_properties,
+        )
+        self._show_invertibility_button = ft.TextButton(
+            "Verificacion Invertibilidad",
+            icon=icons.FACT_CHECK,
+            visible=False,
+            on_click=self._toggle_invertibility,
+        )
+        self._actions_row = ft.Row(
+            spacing=12,
+            controls=[
+                self._show_methods_button,
+                self._show_properties_button,
+                self._show_invertibility_button,
+            ],
+            visible=False,
+        )
+        self._showing_methods = False
+        self._showing_properties = False
+        self._showing_invertibility = False
+        self._invertibility_container = ft.Container(visible=False)
 
         self._methods_title = ft.Text(
             "Método seleccionado",
@@ -155,6 +188,8 @@ class DeterminantView:
                 self._matrix_preview_title,
                 self._matrix_preview_container,
                 self._summary_container,
+                self._actions_row,
+                self._invertibility_container,
                 self._methods_title,
                 self._methods_container,
                 self._properties_title,
@@ -261,34 +296,73 @@ class DeterminantView:
         self._matrix_preview_title.visible = False
         self._matrix_preview_container.visible = False
         self._summary_container.visible = False
+        self._actions_row.visible = False
+        self._show_methods_button.visible = False
+        self._show_properties_button.visible = False
+        self._show_invertibility_button.visible = False
+        self._show_methods_button.disabled = True
+        self._show_properties_button.disabled = True
+        self._show_invertibility_button.disabled = True
+        self._show_methods_button.text = "Ver desarrollo"
+        self._show_properties_button.text = "Ver propiedades"
+        self._show_invertibility_button.text = "Verificacion Invertibilidad"
         self._methods_title.visible = False
         self._methods_container.visible = False
         self._properties_title.visible = False
         self._properties_container.visible = False
+        self._invertibility_container.visible = False
+        self._invertibility_container.content = None
         self._safe_update(self._placeholder)
         self._safe_update(self._matrix_preview_title)
         self._safe_update(self._matrix_preview_container)
         self._safe_update(self._summary_container)
+        self._safe_update(self._actions_row)
+        self._safe_update(self._show_methods_button)
+        self._safe_update(self._show_properties_button)
+        self._safe_update(self._show_invertibility_button)
         self._safe_update(self._methods_title)
         self._safe_update(self._methods_container)
         self._safe_update(self._properties_title)
         self._safe_update(self._properties_container)
+        self._safe_update(self._invertibility_container)
 
     def _clear_results(self) -> None:
         self._summary_title.value = ""
+        self._summary_title.color = TEXT_DARK
         self._summary_message.value = ""
+        self._summary_message.color = TEXT_MUTED
+        self._summary_details.value = ""
+        self._summary_details.color = TEXT_MUTED
         self._methods_container.controls = []
         self._properties_container.controls = []
         self._matrix_preview_container.content = None
         self._summary_container.visible = False
+        self._actions_row.visible = False
+        self._show_methods_button.visible = False
+        self._show_properties_button.visible = False
+        self._show_invertibility_button.visible = False
+        self._show_methods_button.disabled = True
+        self._show_properties_button.disabled = True
+        self._show_invertibility_button.disabled = True
+        self._show_methods_button.text = "Ver desarrollo"
+        self._show_properties_button.text = "Ver propiedades"
+        self._show_invertibility_button.text = "Verificacion Invertibilidad"
         self._methods_container.visible = False
         self._methods_title.visible = False
         self._properties_container.visible = False
         self._properties_title.visible = False
         self._matrix_preview_container.visible = False
         self._matrix_preview_title.visible = False
+        self._showing_methods = False
+        self._showing_properties = False
+        self._showing_invertibility = False
+        self._invertibility_container.visible = False
+        self._invertibility_container.content = None
+        self._analysis = None
+        self._safe_update(self._invertibility_container)
 
     def _render_analysis(self, analysis: DeterminantAnalysisVM) -> None:
+        self._analysis = analysis
         self._placeholder.visible = False
         self._safe_update(self._placeholder)
 
@@ -302,20 +376,123 @@ class DeterminantView:
         self._summary_title.value = f"det(A) = {summary.determinant}"
         self._summary_title.color = PRIMARY_COLOR if summary.is_invertible else "#d32f2f"
         self._summary_message.value = summary.message
+        self._summary_message.color = PRIMARY_COLOR if summary.is_invertible else "#d32f2f"
+        interpretation = (
+            f"Interpretacion: det(A) = {summary.determinant} => A es invertible."
+            if summary.is_invertible
+            else f"Interpretacion: det(A) = {summary.determinant} => A no es invertible."
+        )
+        self._summary_details.value = interpretation
+        self._summary_details.color = PRIMARY_COLOR if summary.is_invertible else "#d32f2f"
         self._summary_container.visible = True
         self._safe_update(self._summary_title)
         self._safe_update(self._summary_message)
+        self._safe_update(self._summary_details)
         self._safe_update(self._summary_container)
+
+        self._showing_methods = False
+        self._showing_properties = False
+        self._showing_invertibility = False
+        self._show_methods_button.text = "Ver desarrollo"
+        self._show_properties_button.text = "Ver propiedades"
+        self._show_invertibility_button.text = "Verificacion Invertibilidad"
+        has_methods = bool(analysis.methods)
+        has_properties = bool(analysis.properties)
+        self._show_methods_button.visible = has_methods
+        self._show_methods_button.disabled = not has_methods
+        self._show_properties_button.visible = has_properties
+        self._show_properties_button.disabled = not has_properties
+        self._show_invertibility_button.visible = True
+        self._show_invertibility_button.disabled = False
+        self._actions_row.visible = True
+        self._safe_update(self._show_methods_button)
+        self._safe_update(self._show_properties_button)
+        self._safe_update(self._show_invertibility_button)
+        self._safe_update(self._actions_row)
 
         self._render_method_card(analysis.methods)
 
         property_controls = self._build_properties_section(analysis.properties)
         self._properties_container.controls = property_controls
-        has_properties = bool(property_controls)
-        self._properties_title.visible = has_properties
-        self._properties_container.visible = has_properties
+        self._properties_title.visible = False
+        self._properties_container.visible = False
         self._safe_update(self._properties_title)
         self._safe_update(self._properties_container)
+
+        self._invertibility_container.content = self._build_invertibility_card(summary)
+        self._invertibility_container.visible = False
+        self._safe_update(self._invertibility_container)
+
+    def _build_invertibility_card(self, summary: DeterminantSummaryVM) -> ft.Control:
+        color = PRIMARY_COLOR if summary.is_invertible else "#c62828"
+        status = "A es invertible" if summary.is_invertible else "A no es invertible"
+        guidance = (
+            "Puedes abrir el modulo 'Inversa de matriz' para calcular A^-1 mediante Gauss-Jordan."
+            if summary.is_invertible
+            else "No existe inversa. Revisa operaciones elementales o dependencias para comprender la singularidad."
+        )
+        return ft.Container(
+            bgcolor="#f2f7ff" if summary.is_invertible else "#fff5f5",
+            border=ft.border.all(1, color=color),
+            border_radius=14,
+            padding=ft.Padding(14, 14, 14, 14),
+            content=ft.Column(
+                spacing=8,
+                controls=[
+                    ft.Row(
+                        spacing=8,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Icon(
+                                icons.CHECK_CIRCLE if summary.is_invertible else icons.ERROR_OUTLINE,
+                                color=color,
+                                size=22,
+                            ),
+                            ft.Text(
+                                f"Verificación de invertibilidad: {status}",
+                                weight=ft.FontWeight.W_600,
+                                color=color,
+                                size=13,
+                            ),
+                        ],
+                    ),
+                    ft.Text(f"det(A) = {summary.determinant}", size=12, color=color, weight=ft.FontWeight.W_600),
+                    ft.Text("Criterio usado: det(A) ≠ 0 ⇔ A es invertible.", size=12, color=TEXT_DARK),
+                    ft.Text(summary.message, size=12, color=TEXT_MUTED),
+                    ft.Text(guidance, size=12, color=TEXT_MUTED),
+                ],
+            ),
+        )
+
+    def _toggle_methods(self, _event=None) -> None:
+        if not self._analysis or not self._analysis.methods:
+            return
+        self._showing_methods = not self._showing_methods
+        self._render_method_card(self._analysis.methods)
+        self._show_methods_button.text = "Ocultar desarrollo" if self._showing_methods else "Ver desarrollo"
+        self._safe_update(self._show_methods_button)
+
+    def _toggle_invertibility(self, _event=None) -> None:
+        if self._invertibility_container.content is None:
+            return
+        self._showing_invertibility = not self._showing_invertibility
+        self._invertibility_container.visible = self._showing_invertibility
+        self._show_invertibility_button.text = (
+            "Ocultar verificacion" if self._showing_invertibility else "Verificacion Invertibilidad"
+        )
+        self._safe_update(self._invertibility_container)
+        self._safe_update(self._show_invertibility_button)
+
+    def _toggle_properties(self, _event=None) -> None:
+        if not self._analysis or not self._analysis.properties:
+            return
+        self._showing_properties = not self._showing_properties
+        self._properties_title.visible = self._showing_properties
+        self._properties_container.visible = self._showing_properties
+        self._show_properties_button.text = "Ocultar propiedades" if self._showing_properties else "Ver propiedades"
+        self._safe_update(self._properties_title)
+        self._safe_update(self._properties_container)
+        self._safe_update(self._show_properties_button)
 
     def _render_method_card(self, methods: Sequence[DeterminantMethodResultVM]) -> None:
         selected: Optional[DeterminantMethodResultVM] = next(
@@ -334,8 +511,8 @@ class DeterminantView:
             return
 
         self._methods_container.controls = [self._build_method_card_content(selected)]
-        self._methods_title.visible = True
-        self._methods_container.visible = True
+        self._methods_title.visible = self._showing_methods
+        self._methods_container.visible = self._showing_methods
         self._safe_update(self._methods_title)
         self._safe_update(self._methods_container)
 
@@ -672,6 +849,7 @@ class DeterminantView:
                     size=12,
                 ),
                 det_summary,
+                ft.Text(detail.interpretation, size=12, color=TEXT_MUTED),
                 dimension_text,
                 matrices_column,
                 self._build_multiplication_text_summary(detail.steps, detail.expected_label),

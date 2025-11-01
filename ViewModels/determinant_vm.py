@@ -68,6 +68,7 @@ class DeterminantMultiplicativeDetailVM:
     det_right: Fraction
     det_product: Fraction
     det_expected: Fraction
+    interpretation: str
     steps: List[MatrixMultiplicationCellVM] = field(default_factory=list)
 
 
@@ -256,6 +257,7 @@ class DeterminantViewModel:
                     det_right=detail.det_right,
                     det_product=detail.det_product,
                     det_expected=detail.det_expected,
+                    interpretation=detail.interpretation,
                     steps=[
                         MatrixMultiplicationCellVM(
                             row=cell.row,
