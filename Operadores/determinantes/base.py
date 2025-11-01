@@ -70,6 +70,14 @@ def extend_matrix_with_columns(matrix: Sequence[Sequence[Fraction]], extra_colum
     return [list(row) + list(row[:extra_columns]) for row in matrix]
 
 
+def extend_matrix_with_rows(matrix: Sequence[Sequence[Fraction]], extra_rows: int) -> List[List[Fraction]]:
+    """Append the first ``extra_rows`` rows at the end to visualize Sarrus by rows."""
+    if extra_rows <= 0:
+        return [list(row) for row in matrix]
+    base = [list(row) for row in matrix]
+    return base + [list(matrix[i]) for i in range(min(extra_rows, len(matrix)))]
+
+
 def _fraction_value(value: Fraction | int | float) -> Fraction:
     if isinstance(value, Fraction):
         return value

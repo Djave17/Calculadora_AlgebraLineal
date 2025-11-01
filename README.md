@@ -40,6 +40,9 @@ Aplicación GUI/CLI diseñada para cursos de álgebra lineal (UAM). Toda la arit
 ```bash
 python UI/main.py
 ```
+```Venv
+python3 -m UI.main.py
+```
 
 1. Selecciona el módulo en el panel izquierdo.
 2. Ajusta dimensiones y parámetros desde el panel derecho.
