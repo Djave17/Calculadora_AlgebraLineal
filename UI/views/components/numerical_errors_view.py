@@ -74,6 +74,7 @@ class NumericalErrorsView:
             column_spacing=30,
         )
         self._interpretation_text = ft.Text("", size=12, color=TEXT_MUTED)
+        self._procedure_container = ft.Container(visible=False)
 
         self._root = self._build()
         self._refresh_error_analysis(silent=True)
@@ -246,7 +247,7 @@ class NumericalErrorsView:
                         ],
                     ),
                     ft.Text(
-                        "Ingresa xᵥ, xₐ y los argumentos usados en f(x) (p. ej. xᵥ = 1.2, xₐ = 1.18). "
+                        "Ingresa xᵥ, xₐ y los argumentos usados en f(x); por ejemplo xᵥ = 1.2 y xₐ = 1.18. "
                         "El panel devuelve automáticamente Eₐ, Eᵣ y Eₚ para el reporte.",
                         size=12,
                         color=TEXT_MUTED,
@@ -258,7 +259,7 @@ class NumericalErrorsView:
                         content=ft.Column(
                             spacing=4,
                             controls=[
-                                ft.Text("Cómo llenar cada campo (según la diapositiva)", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                                ft.Text("Cómo llenar los campos", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
                                 ft.Text("• xᵥ: valor considerado verdadero (m de la fórmula).", size=11, color=TEXT_MUTED),
                                 ft.Text("• xₐ: medición aproximada o xᵥ ± Δx.", size=11, color=TEXT_MUTED),
                                 ft.Text("• xᵥ para f(x): argumento base para evaluar f(x) en propagación.", size=11, color=TEXT_MUTED),
@@ -284,8 +285,36 @@ class NumericalErrorsView:
                             ],
                         ),
                     ),
+                    ft.Container(
+                        bgcolor="#eaf8ff",
+                        border_radius=12,
+                        padding=ft.Padding(12, 12, 12, 12),
+                        content=ft.Column(
+                            spacing=4,
+                            controls=[
+                                ft.Text("Procedimiento de las operaciones", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                                ft.Text(
+                                    "1. Despeje de error absoluto Eₐ = |xᵥ − xₐ|: resta las mediciones y toma su valor absoluto.",
+                                    size=11,
+                                    color=TEXT_MUTED,
+                                ),
+                                ft.Text(
+                                    "2. Despeje de error relativo Eᵣ = Eₐ / |xᵥ|: divide el error absoluto entre el valor verdadero (multiplica por 100 si necesitas porcentaje).",
+                                    size=11,
+                                    color=TEXT_MUTED,
+                                ),
+                                ft.Text(
+                                    "3. Propagación Δy = |f(xᵥ) − f(xₐ)|: evalúa f(x) en ambos argumentos (xᵥ y xₐ = xᵥ ± Δx) para obtener el error de salida.",
+                                    size=11,
+                                    color=TEXT_MUTED,
+                                ),
+                            ],
+                        ),
+                    ),
                     inputs,
                     self._error_table,
+                    ft.Text("Procedimiento", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                    self._procedure_container,
                     ft.Text("Interpretación", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
                     interpretation_box,
                 ],
@@ -314,6 +343,9 @@ class NumericalErrorsView:
         )
 
     def _refresh_error_analysis(self, _event=None, *, silent: bool = False) -> None:
+        self._procedure_container.visible = False
+        self._procedure_container.content = None
+        self._safe_update(self._procedure_container)
         try:
             true_value = self._parse_float(self._true_value_field.value, "xᵥ (valor verdadero)")
             approx_value = self._parse_float(self._approx_value_field.value, "xₐ (valor aproximado)")
@@ -378,6 +410,50 @@ class NumericalErrorsView:
         self._interpretation_text.value = vm.interpretation
         self._safe_update(self._error_table)
         self._safe_update(self._interpretation_text)
+        self._render_procedure_card(vm)
+
+    def _render_procedure_card(self, vm: ErrorAnalysisVM) -> None:
+        rel_text = (
+            "No definido (xᵥ = 0)"
+            if vm.relative_error is None
+            else f"{self._format_number(vm.absolute_error)} / |{self._format_number(vm.true_value)}| = {self._format_number(vm.relative_error)}"
+        )
+        true_arg = (self._true_input_field.value or "").strip() or self._format_number(vm.true_value)
+        approx_arg = (self._approx_input_field.value or "").strip() or self._format_number(vm.approx_value)
+        steps = [
+            ft.Text(f"xᵥ = {self._format_number(vm.true_value)} dato verdadero.", size=11, color=TEXT_MUTED),
+            ft.Text(f"xₐ = {self._format_number(vm.approx_value)} medición aproximada.", size=11, color=TEXT_MUTED),
+            ft.Text(
+                f"Eₐ = |xᵥ − xₐ| = |{self._format_number(vm.true_value)} − {self._format_number(vm.approx_value)}| = {self._format_number(vm.absolute_error)}.",
+                size=11,
+                color=TEXT_MUTED,
+            ),
+            ft.Text(f"Eᵣ = Eₐ / |xᵥ| = {rel_text}.", size=11, color=TEXT_MUTED),
+            ft.Text(
+                f"f(xᵥ) = f({true_arg}) = {self._format_number(vm.f_true)} con f(x) = {vm.function_expression}.",
+                size=11,
+                color=TEXT_MUTED,
+            ),
+            ft.Text(
+                f"f(xₐ) = f({approx_arg}) = {self._format_number(vm.f_approx)}.",
+                size=11,
+                color=TEXT_MUTED,
+            ),
+            ft.Text(
+                f"Eₚ = |f(xᵥ) − f(xₐ)| = |{self._format_number(vm.f_true)} − {self._format_number(vm.f_approx)}| = {self._format_number(vm.propagated_error)}.",
+                size=11,
+                color=TEXT_MUTED,
+            ),
+        ]
+        card = ft.Container(
+            bgcolor="#f0f8ff",
+            border_radius=12,
+            padding=ft.Padding(12, 12, 12, 12),
+            content=ft.Column(spacing=4, controls=steps),
+        )
+        self._procedure_container.content = card
+        self._procedure_container.visible = True
+        self._safe_update(self._procedure_container)
 
     # ------------------------------ helpers ------------------------------ #
     def _parse_float(self, text: str | None, label: str) -> float:
