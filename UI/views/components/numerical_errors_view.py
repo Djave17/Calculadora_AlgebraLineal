@@ -22,7 +22,7 @@ class NumericalErrorsView:
     def __init__(self, page: ft.Page) -> None:
         self._page = page
         self._true_value_field = ft.TextField(
-            label="Valor verdadero (x_v)",
+            label="xᵥ (valor verdadero)",
             value="2.1738",
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -30,7 +30,7 @@ class NumericalErrorsView:
             keyboard_type=ft.KeyboardType.NUMBER,
         )
         self._approx_value_field = ft.TextField(
-            label="Valor aproximado (x_a)",
+            label="xₐ (valor aproximado)",
             value="2.15",
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -46,7 +46,7 @@ class NumericalErrorsView:
             helper_text="Puedes usar funciones trigonométricas de math y el símbolo ** para potencias.",
         )
         self._true_input_field = ft.TextField(
-            label="x verdadero (para f)",
+            label="xᵥ para f(x)",
             value="1.2",
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -54,7 +54,7 @@ class NumericalErrorsView:
             keyboard_type=ft.KeyboardType.NUMBER,
         )
         self._approx_input_field = ft.TextField(
-            label="x aproximado",
+            label="xₐ aproximado",
             value="1.18",
             border_radius=12,
             border_color=PRIMARY_COLOR,
@@ -89,7 +89,7 @@ class NumericalErrorsView:
             controls=[
                 ft.Text("Programa 8 · Errores numéricos", size=24, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
                 ft.Text(
-                    "Trabaja con el bloque de error absoluto, relativo y propagación usando una función simple como sin(x) + x².",
+                    "Trabaja con xᵥ, xₐ y f(x) para calcular Eₐ = |xᵥ − xₐ|, Eᵣ = |xᵥ − xₐ| / |xᵥ| y Eₚ = |f(xᵥ) − f(xₐ)|.",
                     size=13,
                     color=TEXT_MUTED,
                 ),
@@ -105,7 +105,7 @@ class NumericalErrorsView:
                 spacing=6,
                 controls=[
                     ft.Text("Checklist del reporte:", weight=ft.FontWeight.W_600, color=TEXT_DARK),
-                    ft.Text("• Introducir x_v y x_a proporcionados por el docente o un sensor para calcular errores.", size=12, color=TEXT_MUTED),
+                    ft.Text("• Introducir xᵥ y xₐ proporcionados por el docente o un sensor para calcular errores.", size=12, color=TEXT_MUTED),
                     ft.Text("• Demostrar por qué 0.1 + 0.2 != 0.3 y documentar otros escenarios de redondeo.", size=12, color=TEXT_MUTED),
                     ft.Text("• Explicar con palabras los resultados tabulares (interpretación final).", size=12, color=TEXT_MUTED),
                 ],
@@ -246,8 +246,8 @@ class NumericalErrorsView:
                         ],
                     ),
                     ft.Text(
-                        "Ingresa x_v y x_a, junto con la función propuesta (sin(x) + x^2 como en la guía). "
-                        "El resultado aparece en una tabla para anexarla al PDF.",
+                        "Ingresa xᵥ, xₐ y los argumentos usados en f(x) (p. ej. xᵥ = 1.2, xₐ = 1.18). "
+                        "El panel devuelve automáticamente Eₐ, Eᵣ y Eₚ para el reporte.",
                         size=12,
                         color=TEXT_MUTED,
                     ),
@@ -282,10 +282,10 @@ class NumericalErrorsView:
 
     def _refresh_error_analysis(self, _event=None, *, silent: bool = False) -> None:
         try:
-            true_value = self._parse_float(self._true_value_field.value, "valor verdadero x_v")
-            approx_value = self._parse_float(self._approx_value_field.value, "valor aproximado x_a")
-            true_input = self._parse_float(self._true_input_field.value, "x verdadero")
-            approx_input = self._parse_float(self._approx_input_field.value, "x aproximado")
+            true_value = self._parse_float(self._true_value_field.value, "xᵥ (valor verdadero)")
+            approx_value = self._parse_float(self._approx_value_field.value, "xₐ (valor aproximado)")
+            true_input = self._parse_float(self._true_input_field.value, "xᵥ para f(x)")
+            approx_input = self._parse_float(self._approx_input_field.value, "xₐ para f(x)")
         except ValueError as exc:
             if not silent:
                 self._show_error(str(exc))
@@ -306,19 +306,40 @@ class NumericalErrorsView:
 
     def _render_error_analysis(self, vm: ErrorAnalysisVM) -> None:
         rows = [
-            ("x_v (verdadero)", self._format_number(vm.true_value)),
-            ("x_a (aproximado)", self._format_number(vm.approx_value)),
-            ("Error absoluto |x_v - x_a|", self._format_number(vm.absolute_error)),
-            (
-                "Error relativo |x_v - x_a| / |x_v|",
-                "No definido (x_v = 0)" if vm.relative_error is None else self._format_number(vm.relative_error),
-            ),
-            (f"f(x_v) con f(x)={vm.function_expression}", self._format_number(vm.f_true)),
-            ("f(x_a)", self._format_number(vm.f_approx)),
-            ("Propagación |f(x_v) - f(x_a)|", self._format_number(vm.propagated_error)),
+            {"title": "xᵥ (verdadero)", "value": self._format_number(vm.true_value)},
+            {"title": "xₐ (aproximado)", "value": self._format_number(vm.approx_value)},
+            {
+                "title": "Error absoluto",
+                "formula": "Eₐ = |xᵥ − xₐ|",
+                "value": self._format_number(vm.absolute_error),
+            },
+            {
+                "title": "Error relativo",
+                "formula": "Eᵣ = |xᵥ − xₐ| / |xᵥ|",
+                "value": "No definido (xᵥ = 0)" if vm.relative_error is None else self._format_number(vm.relative_error),
+            },
+            {
+                "title": f"f(xᵥ) con f(x) = {vm.function_expression}",
+                "value": self._format_number(vm.f_true),
+            },
+            {
+                "title": "f(xₐ)",
+                "value": self._format_number(vm.f_approx),
+            },
+            {
+                "title": "Propagación",
+                "formula": "Eₚ = |f(xᵥ) − f(xₐ)|",
+                "value": self._format_number(vm.propagated_error),
+            },
         ]
         self._error_table.rows = [
-            ft.DataRow(cells=[ft.DataCell(ft.Text(label)), ft.DataCell(ft.Text(value))]) for label, value in rows
+            ft.DataRow(
+                cells=[
+                    ft.DataCell(self._metric_label(row["title"], row.get("formula"))),
+                    ft.DataCell(ft.Text(row["value"])),
+                ]
+            )
+            for row in rows
         ]
         self._error_table.visible = True
         self._interpretation_text.value = vm.interpretation
@@ -337,6 +358,17 @@ class NumericalErrorsView:
 
     def _format_number(self, value: float) -> str:
         return f"{value:.8g}"
+
+    def _metric_label(self, title: str, formula: str | None = None) -> ft.Control:
+        if not formula:
+            return ft.Text(title)
+        return ft.Column(
+            spacing=2,
+            controls=[
+                ft.Text(title, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                ft.Text(formula, size=11, color=TEXT_MUTED),
+            ],
+        )
 
     def _show_error(self, message: str) -> None:
         self._page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor="#f77373")

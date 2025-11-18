@@ -23,14 +23,7 @@ class PositionalNotationView:
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,
         )
-        self._results_row = ft.ResponsiveRow(
-            spacing=16,
-            run_spacing=16,
-            controls=[
-                ft.Container(col={"xs": 12, "md": 6}, alignment=ft.alignment.top_center),
-                ft.Container(col={"xs": 12, "md": 6}, alignment=ft.alignment.top_center),
-            ],
-        )
+        self._results_column = ft.Column(spacing=12)
         self._root = self._build()
         self._refresh_decomposition(silent=True)
 
@@ -116,7 +109,7 @@ class PositionalNotationView:
                             ),
                         ],
                     ),
-                    self._results_row,
+                    self._results_column,
                 ],
             ),
         )
@@ -146,21 +139,13 @@ class PositionalNotationView:
             if not silent:
                 self._show_error(str(exc))
             return
-        self._results_row.controls = [
-            ft.Container(
-                col={"xs": 12, "md": 6},
-                expand=True,
-                content=self._render_decomposition_card(base10_vm, "Base 10", icons.CALCULATE),
-            ),
-            ft.Container(
-                col={"xs": 12, "md": 6},
-                expand=True,
-                content=self._render_decomposition_card(base2_vm, "Base 2", icons.DEVICE_HUB),
-            ),
+        self._results_column.controls = [
+            self._build_decomposition_tile(base10_vm, "Base 10", icons.CALCULATE, True),
+            self._build_decomposition_tile(base2_vm, "Base 2", icons.DEVICE_HUB, True),
         ]
-        self._safe_update(self._results_row)
+        self._safe_update(self._results_column)
 
-    def _render_decomposition_card(self, vm: BaseDecompositionVM, title: str, icon_name: str) -> ft.Control:
+    def _build_decomposition_tile(self, vm: BaseDecompositionVM, title: str, icon_name: str, expanded: bool) -> ft.Control:
         rows = []
         for term in vm.terms:
             rows.append(
@@ -172,7 +157,7 @@ class PositionalNotationView:
                     ],
                 )
             )
-        steps = ft.Column(spacing=2, controls=[ft.Text(step, size=11, color=TEXT_MUTED, expand=False) for step in vm.steps])
+        steps = ft.Column(spacing=2, controls=[ft.Text(step, size=11, color=TEXT_MUTED) for step in vm.steps])
         table = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Cifra")),
@@ -183,30 +168,28 @@ class PositionalNotationView:
             divider_thickness=0.6,
             column_spacing=24,
         )
-        return ft.Container(
+        header = ft.Row(
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            controls=[
+                ft.Icon(icon_name, color=PRIMARY_COLOR),
+                ft.Text(title, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                ft.Container(
+                    bgcolor="#fff1e5",
+                    border_radius=10,
+                    padding=ft.Padding(8, 4, 8, 4),
+                    content=ft.Text(vm.base_digits, size=11, weight=ft.FontWeight.BOLD),
+                ),
+            ],
+        )
+        body = ft.Container(
             bgcolor="#fefcfa",
             border=ft.border.all(1, color=BORDER_COLOR),
             border_radius=18,
             padding=ft.Padding(16, 16, 16, 16),
-            expand=True,
             content=ft.Column(
                 spacing=10,
-                expand=True,
                 controls=[
-                    ft.Row(
-                        spacing=8,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            ft.Icon(icon_name, color=PRIMARY_COLOR),
-                            ft.Text(title, weight=ft.FontWeight.W_600, color=TEXT_DARK),
-                            ft.Container(
-                                bgcolor="#fff1e5",
-                                border_radius=10,
-                                padding=ft.Padding(8, 4, 8, 4),
-                                content=ft.Text(vm.base_digits, size=11, weight=ft.FontWeight.BOLD),
-                            ),
-                        ],
-                    ),
                     ft.Text(
                         f"Expresión posicional: {vm.formatted_expression}",
                         size=12,
@@ -218,10 +201,8 @@ class PositionalNotationView:
                         bgcolor="#fff6ed",
                         border_radius=12,
                         padding=ft.Padding(10, 10, 10, 10),
-                        expand=True,
                         content=ft.Column(
                             spacing=4,
-                            expand=True,
                             controls=[
                                 ft.Text("Pasos mostrados al usuario", size=11, weight=ft.FontWeight.W_600, color=TEXT_DARK),
                                 steps,
@@ -230,6 +211,12 @@ class PositionalNotationView:
                     ),
                 ],
             ),
+        )
+        return ft.ExpansionTile(
+            title=header,
+            subtitle=ft.Text(f"Suma final: {vm.value}", size=12, color=TEXT_MUTED),
+            initially_expanded=expanded,
+            controls=[body],
         )
 
     def _show_error(self, message: str) -> None:
