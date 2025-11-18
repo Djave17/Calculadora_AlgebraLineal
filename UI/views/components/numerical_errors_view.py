@@ -251,6 +251,39 @@ class NumericalErrorsView:
                         size=12,
                         color=TEXT_MUTED,
                     ),
+                    ft.Container(
+                        bgcolor="#f9f5ff",
+                        border_radius=12,
+                        padding=ft.Padding(12, 12, 12, 12),
+                        content=ft.Column(
+                            spacing=4,
+                            controls=[
+                                ft.Text("Cómo llenar cada campo (según la diapositiva)", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                                ft.Text("• xᵥ: valor considerado verdadero (m de la fórmula).", size=11, color=TEXT_MUTED),
+                                ft.Text("• xₐ: medición aproximada o xᵥ ± Δx.", size=11, color=TEXT_MUTED),
+                                ft.Text("• xᵥ para f(x): argumento base para evaluar f(x) en propagación.", size=11, color=TEXT_MUTED),
+                                ft.Text("• xₐ para f(x): argumento perturbado (xᵥ ± Δx) para calcular Δy.", size=11, color=TEXT_MUTED),
+                                ft.Text("• f(x): función elegida para calcular la propagación del error (sin(x)+x**2, x**3, etc.).", size=11, color=TEXT_MUTED),
+                            ],
+                        ),
+                    ),
+                    ft.Container(
+                        bgcolor="#fff3f0",
+                        border_radius=12,
+                        padding=ft.Padding(12, 12, 12, 12),
+                        content=ft.Column(
+                            spacing=4,
+                            controls=[
+                                ft.Text("Ejercicio propuesto 4", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                                ft.Text(
+                                    "x = 2.5 con Δx = 0.01 ⇒ xᵥ = 2.5, xₐ = xᵥ + Δx = 2.51, "
+                                    "xᵥ para f(x) = 2.5, xₐ para f(x) = 2.51 y f(x) = x**3.",
+                                    size=11,
+                                    color=TEXT_MUTED,
+                                ),
+                            ],
+                        ),
+                    ),
                     inputs,
                     self._error_table,
                     ft.Text("Interpretación", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
