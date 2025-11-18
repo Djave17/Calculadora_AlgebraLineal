@@ -21,6 +21,8 @@ from .components import (
     MatrixIdentitiesView,
     MatrixInverseView,
     DeterminantView,
+    NumericalErrorsView,
+    PositionalNotationView,
 )
 from .components.steps_dialog import show_steps_dialog
 from .components.custom_config_panels import (
@@ -68,6 +70,8 @@ class MainShell:
         self._matrix_identities_view: Optional[MatrixIdentitiesView] = None
         self._matrix_inverse_view: Optional[MatrixInverseView] = None
         self._determinant_view: Optional[DeterminantView] = None
+        self._numerical_errors_view: Optional[NumericalErrorsView] = None
+        self._positional_notation_view: Optional[PositionalNotationView] = None
 
         self._matrix_ops_config: Optional[MatrixOpsConfigPanel] = None
         self._transpose_config_panel: Optional[TransposeConfigPanel] = None
@@ -300,6 +304,16 @@ class MainShell:
             self._mer_view = MerNotesView()
         return self._mer_view
 
+    def _ensure_numerical_errors_view(self) -> NumericalErrorsView:
+        if self._numerical_errors_view is None:
+            self._numerical_errors_view = NumericalErrorsView(self.page)
+        return self._numerical_errors_view
+
+    def _ensure_positional_notation_view(self) -> PositionalNotationView:
+        if self._positional_notation_view is None:
+            self._positional_notation_view = PositionalNotationView(self.page)
+        return self._positional_notation_view
+
     def _activate_method(self, method: MethodInfo) -> None:
         # Conmutar entre tipos de vista de forma segura y sin variables no definidas
         if method.view_type == "matrix_solver":
@@ -407,6 +421,24 @@ class MainShell:
 
         elif method.view_type == "mer_notes":
             view = self._ensure_mer_view()
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.visible = False
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "numerical_errors":
+            view = self._ensure_numerical_errors_view()
+            if self._center_container:
+                self._center_container.content = view.view
+                self._safe_update(self._center_container)
+            if self._config_container:
+                self._config_container.visible = False
+                self._safe_update(self._config_container)
+
+        elif method.view_type == "positional_notation":
+            view = self._ensure_positional_notation_view()
             if self._center_container:
                 self._center_container.content = view.view
                 self._safe_update(self._center_container)

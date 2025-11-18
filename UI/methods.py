@@ -135,6 +135,32 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
         ),
     ),
     MethodCategory(
+        id="numerical_methods",
+        label="Notación y errores",
+        methods=(
+            MethodInfo(
+                id="positional_notation_program8",
+                label="Notación",
+                icon="FORMAT_LIST_NUMBERED",
+                available=True,
+                description="Descompone cualquier entero usando base 10 y base 2 mostrando cada aporte posicional.",
+                category="Notación y errores",
+                view_type="positional_notation",
+                shows_config_panel=False,
+            ),
+            MethodInfo(
+                id="numerical_errors_program8",
+                label="Errores",
+                icon="SCIENCE",
+                available=True,
+                description="Analiza errores absoluto/relativo, propagación y ejemplos de punto flotante.",
+                category="Notación y errores",
+                view_type="numerical_errors",
+                shows_config_panel=False,
+            ),
+        ),
+    ),
+    MethodCategory(
         id="references",
         label="Material de apoyo",
         methods=(

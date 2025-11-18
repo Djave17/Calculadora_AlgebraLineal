@@ -20,6 +20,8 @@ Aplicación GUI/CLI diseñada para cursos de álgebra lineal (UAM). Toda la arit
 | **Operaciones de matrices** | Suma, resta, α·A, producto A·B y traspuestas (A^T, B^T) con pasos detallados. |
 | **Matriz traspuesta** | Cálculo de A^T mostrando el intercambio de filas por columnas y verificación de propiedades. |
 | **MER – notas** | Material de apoyo y recordatorios teóricos. |
+| **Notación (Prog 8)** | Tarjetas para descomponer números en base 10 y base 2, mostrando cada potencia y suma final. |
+| **Errores (Prog 8)** | Conceptos ilustrados, ejemplos de punto flotante y laboratorio para error absoluto/relativo y propagación. |
 
 ---
 

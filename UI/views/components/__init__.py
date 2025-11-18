@@ -11,6 +11,8 @@ from .transpose_view import TransposeView
 from .matrix_identities_view import MatrixIdentitiesView
 from .matrix_inverse_view import MatrixInverseView
 from .determinant_view import DeterminantView
+from .numerical_errors_view import NumericalErrorsView
+from .positional_notation_view import PositionalNotationView
 from .custom_config_panels import (
     MatrixOpsConfigPanel,
     TransposeConfigPanel,
@@ -32,6 +34,8 @@ __all__ = [
     "MatrixIdentitiesView",
     "MatrixInverseView",
     "DeterminantView",
+    "NumericalErrorsView",
+    "PositionalNotationView",
     "MatrixOpsConfigPanel",
     "TransposeConfigPanel",
     "VectorPropertiesConfigPanel",
