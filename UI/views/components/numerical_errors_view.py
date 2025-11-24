@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import List
+import re
 
 import flet as ft
 from flet import Icons as icons
@@ -38,13 +39,17 @@ class NumericalErrorsView:
             keyboard_type=ft.KeyboardType.NUMBER,
         )
         self._function_field = ft.TextField(
-            label="Función f(x)",
-            value="sin(x) + x**2",
+            label="Funcion f(x)",
+            value="",
+            hint_text="Ejemplo: sin(x) + x**2 o 3*x + 3",
             border_radius=12,
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,
-            helper_text="Puedes usar funciones trigonométricas de math y el símbolo ** para potencias.",
+            helper_text="Usa * para multiplicar (3*x) y ** para potencias.",
+            on_change=self._handle_function_change,
+            on_submit=self._handle_function_submit,
         )
+        self._function_expression = ""
         self._true_input_field = ft.TextField(
             label="xᵥ para f(x)",
             value="1.2",
@@ -321,6 +326,33 @@ class NumericalErrorsView:
             ),
         )
 
+    def _handle_function_change(self, event: ft.ControlEvent) -> None:
+        self._function_expression = (event.control.value or "").strip()
+        self._function_field.error_text = None
+        self._safe_update(self._function_field)
+
+    def _handle_function_submit(self, _event: ft.ControlEvent) -> None:
+        self._function_expression = (self._function_field.value or "").strip()
+        self._refresh_error_analysis()
+
+    def _clear_results(self) -> None:
+        self._error_table.visible = False
+        self._error_table.rows = []
+        self._interpretation_text.value = ""
+        self._procedure_container.visible = False
+        self._procedure_container.content = None
+        self._safe_update(self._error_table)
+        self._safe_update(self._procedure_container)
+        self._safe_update(self._interpretation_text)
+
+    def _normalize_expression(self, expr: str) -> str:
+        normalized = expr.replace("^", "**")
+        normalized = re.sub(r"(?<=\d)(?=[A-Za-z\(])", "*", normalized)
+        normalized = re.sub(r"(?<=[A-Za-z])(?=\d)", "*", normalized)
+        normalized = re.sub(r"(?<=\))(?=[A-Za-z\d\(])", "*", normalized)
+        normalized = re.sub(r"(?<=[A-Za-z\d])(?=\()", "*", normalized)
+        return normalized
+
     def _concept_chip(self, concept: ErrorConceptVM) -> ft.Control:
         return ft.Container(
             bgcolor="#fffaf6",
@@ -343,30 +375,44 @@ class NumericalErrorsView:
         )
 
     def _refresh_error_analysis(self, _event=None, *, silent: bool = False) -> None:
-        self._procedure_container.visible = False
-        self._procedure_container.content = None
-        self._safe_update(self._procedure_container)
+        self._clear_results()
         try:
-            true_value = self._parse_float(self._true_value_field.value, "xᵥ (valor verdadero)")
-            approx_value = self._parse_float(self._approx_value_field.value, "xₐ (valor aproximado)")
-            true_input = self._parse_float(self._true_input_field.value, "xᵥ para f(x)")
-            approx_input = self._parse_float(self._approx_input_field.value, "xₐ para f(x)")
+            true_value = self._parse_float(self._true_value_field.value, "x?? (valor verdadero)")
+            approx_value = self._parse_float(self._approx_value_field.value, "x?'? (valor aproximado)")
+            true_input = self._parse_float(self._true_input_field.value, "x?? para f(x)")
+            approx_input = self._parse_float(self._approx_input_field.value, "x?'? para f(x)")
         except ValueError as exc:
             if not silent:
                 self._show_error(str(exc))
             return
+        expression = (self._function_expression or self._function_field.value or "").strip()
+        if not expression:
+            if not silent:
+                message = "Ingresa una funcion como sin(x) + x**2."
+                self._function_field.error_text = message
+                self._safe_update(self._function_field)
+                self._show_error(message)
+            return
+        expression = self._normalize_expression(expression)
         try:
             vm = compute_error_analysis(
                 true_value=true_value,
                 approx_value=approx_value,
-                function_expression=self._function_field.value or "",
+                function_expression=expression,
                 true_input=true_input,
                 approx_input=approx_input,
             )
         except ValueError as exc:
             if not silent:
-                self._show_error(str(exc))
+                message = str(exc)
+                self._function_field.error_text = message
+                self._safe_update(self._function_field)
+                self._show_error(message)
             return
+        self._function_expression = expression
+        self._function_field.value = expression
+        self._function_field.error_text = None
+        self._safe_update(self._function_field)
         self._render_error_analysis(vm)
 
     def _render_error_analysis(self, vm: ErrorAnalysisVM) -> None:

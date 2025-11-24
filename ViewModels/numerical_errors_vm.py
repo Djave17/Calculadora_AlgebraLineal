@@ -55,10 +55,42 @@ class ErrorAnalysisVM:
     interpretation: str
 
 
+def _cot(x: float) -> float:
+    sine = math.sin(x)
+    if math.isclose(sine, 0.0, abs_tol=1e-12):
+        raise ValueError("cot(x) indefinido para multiplos de pi.")
+    return math.cos(x) / sine
+
+
+def _sec(x: float) -> float:
+    cosine = math.cos(x)
+    if math.isclose(cosine, 0.0, abs_tol=1e-12):
+        raise ValueError("sec(x) indefinido para pi/2 + k*pi.")
+    return 1 / cosine
+
+
+def _csc(x: float) -> float:
+    sine = math.sin(x)
+    if math.isclose(sine, 0.0, abs_tol=1e-12):
+        raise ValueError("csc(x) indefinido para k*pi.")
+    return 1 / sine
+
+
 _ALLOWED_FUNCS: Dict[str, Callable[..., float]] = {
     "sin": math.sin,
+    "sen": math.sin,
+    "seno": math.sin,
     "cos": math.cos,
+    "coseno": math.cos,
     "tan": math.tan,
+    "tangente": math.tan,
+    "tg": math.tan,
+    "ctg": _cot,
+    "cot": _cot,
+    "cotg": _cot,
+    "sec": _sec,
+    "csc": _csc,
+    "cosec": _csc,
     "sqrt": math.sqrt,
     "log": math.log,
     "ln": math.log,
@@ -66,11 +98,17 @@ _ALLOWED_FUNCS: Dict[str, Callable[..., float]] = {
     "exp": math.exp,
     "abs": abs,
     "asin": math.asin,
+    "arcsin": math.asin,
     "acos": math.acos,
+    "arccos": math.acos,
     "atan": math.atan,
+    "arctan": math.atan,
     "sinh": math.sinh,
+    "senh": math.sinh,
     "cosh": math.cosh,
+    "cosenh": math.cosh,
     "tanh": math.tanh,
+    "tgh": math.tanh,
 }
 
 _ALLOWED_CONSTANTS: Dict[str, float] = {
