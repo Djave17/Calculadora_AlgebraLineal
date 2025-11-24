@@ -161,6 +161,22 @@ METHOD_CATEGORIES: Tuple[MethodCategory, ...] = (
         ),
     ),
     MethodCategory(
+        id="root_methods",
+        label="Metodos numericos",
+        methods=(
+            MethodInfo(
+                id="metodos_cerrados_raices",
+                label="Metodos cerrados de raices",
+                icon="FUNCTIONS",
+                available=True,
+                description="Biseccion y Regla Falsa con tabla de iteraciones y resumen del error porcentual.",
+                category="Metodos numericos",
+                view_type="metodos_cerrados_raices",
+                shows_config_panel=False,
+            ),
+        ),
+    ),
+    MethodCategory(
         id="references",
         label="Material de apoyo",
         methods=(
