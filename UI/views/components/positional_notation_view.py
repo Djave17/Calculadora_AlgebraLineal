@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import List
 
@@ -17,11 +17,13 @@ class PositionalNotationView:
         self._number_field = ft.TextField(
             label="Número entero",
             value="84506",
+            helper_text="Acepta signo +/- y espacios como separador de miles.",
             text_align=ft.TextAlign.CENTER,
             keyboard_type=ft.KeyboardType.NUMBER,
             border_radius=12,
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,
+            on_submit=self._refresh_decomposition,
         )
         self._results_column = ft.Column(spacing=12)
         self._root = self._build()
@@ -66,29 +68,19 @@ class PositionalNotationView:
             content=ft.Column(
                 spacing=14,
                 controls=[
-                    ft.Row(
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ft.Column(
+                        spacing=4,
                         controls=[
-                            ft.Column(
-                                spacing=2,
-                                controls=[
-                                    ft.Text("Descomposición paso a paso", size=18, weight=ft.FontWeight.W_600, color=TEXT_DARK),
-                                    ft.Text(
-                                        "Escribe el número e identifica los aportes posicionales. Ideal para capturas de pantalla del reporte.",
-                                        size=12,
-                                        color=TEXT_MUTED,
-                                    ),
-                                ],
+                            ft.Text("Descomposición paso a paso", size=18, weight=ft.FontWeight.W_600, color=TEXT_DARK),
+                            ft.Text(
+                                "Escribe el número e identifica los aportes posicionales. Ideal para capturas de pantalla del reporte.",
+                                size=12,
+                                color=TEXT_MUTED,
                             ),
-                            ft.FilledButton(
-                                "Descomponer",
-                                icon=icons.AUTO_AWESOME,
-                                style=ft.ButtonStyle(
-                                    bgcolor={ft.ControlState.DEFAULT: PRIMARY_COLOR},
-                                    color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
-                                    shape=ft.RoundedRectangleBorder(radius=12),
-                                ),
-                                on_click=self._refresh_decomposition,
+                            ft.Text(
+                                "Pulsa el botón rojo de la derecha para recalcular la descomposición.",
+                                size=11,
+                                color=TEXT_MUTED,
                             ),
                         ],
                     ),
@@ -113,13 +105,33 @@ class PositionalNotationView:
                 ],
             ),
         )
+        floating_refresh = ft.Container(
+            alignment=ft.alignment.top_right,
+            padding=ft.Padding(0, 0, 0, 0),
+            content=ft.FilledButton(
+                "Calcular",
+                icon=icons.AUTO_AWESOME,
+                style=ft.ButtonStyle(
+                    bgcolor={ft.ControlState.DEFAULT: SECONDARY_COLOR},
+                    color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
+                    shape=ft.RoundedRectangleBorder(radius=12),
+                ),
+                on_click=self._refresh_decomposition,
+            ),
+        )
+        example_section = ft.Stack(
+            controls=[
+                example_card,
+                floating_refresh,
+            ],
+        )
 
         layout = ft.Column(
             spacing=20,
             controls=[
                 hero,
                 requirements,
-                example_card,
+                example_section,
             ],
         )
         return ft.Container(expand=True, padding=ft.Padding(12, 12, 12, 24), content=layout)
@@ -127,10 +139,14 @@ class PositionalNotationView:
     # ---------------- Actions ---------------- #
     def _refresh_decomposition(self, _event=None, *, silent: bool = False) -> None:
         try:
-            number = int((self._number_field.value or "0").replace(" ", ""))
-        except ValueError:
+            number = self._parse_integer_input()
+            self._number_field.error_text = None
+        except ValueError as exc:
             if not silent:
-                self._show_error("Ingresa un número entero (puede ser negativo).")
+                message = str(exc)
+                self._number_field.error_text = message
+                self._safe_update(self._number_field)
+                self._show_error(message)
             return
         try:
             base10_vm = decompose_number(number, 10)
@@ -144,6 +160,7 @@ class PositionalNotationView:
             self._build_decomposition_tile(base2_vm, "Base 2", icons.DEVICE_HUB, True),
         ]
         self._safe_update(self._results_column)
+        self._safe_update(self._number_field)
 
     def _build_decomposition_tile(self, vm: BaseDecompositionVM, title: str, icon_name: str, expanded: bool) -> ft.Control:
         rows = []
@@ -230,3 +247,21 @@ class PositionalNotationView:
                 control.update()
         except AssertionError:
             pass
+
+    def _parse_integer_input(self) -> int:
+        raw_value = (self._number_field.value or "").strip()
+        if not raw_value:
+            raise ValueError("Ingresa un numero entero (puede ser negativo).")
+        normalized = "".join(ch for ch in raw_value if not ch.isspace())
+        normalized = normalized.replace("_", "")
+        if not normalized:
+            raise ValueError("Ingresa un numero entero (puede ser negativo).")
+        sign = ""
+        if normalized[0] in "+-":
+            sign = normalized[0]
+            normalized = normalized[1:]
+        if not normalized or not normalized.isdigit():
+            raise ValueError("Solo se permiten digitos y un signo inicial.")
+        return int(f"{sign}{normalized}")
+
+
