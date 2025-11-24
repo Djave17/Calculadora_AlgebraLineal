@@ -268,7 +268,7 @@ class MetodosCerradosRaicesView:
                         ft.DataCell(self._mono_line(self._fmt(iteration.b))),
                         ft.DataCell(self._mono_line(self._fmt(iteration.point))),
                         ft.DataCell(
-                            self._mono_line("-" if iteration.error_percent is None else f"{iteration.error_percent:.4f}")
+                            self._mono_line("-" if iteration.error_percent is None else f"{iteration.error_percent:.4f}%")
                         ),
                         ft.DataCell(self._signed_cell(iteration.fa)),
                         ft.DataCell(self._signed_cell(iteration.fb)),
@@ -293,7 +293,7 @@ class MetodosCerradosRaicesView:
         ]
         rows: list[ft.DataRow] = []
         for iteration in result.iterations:
-            ea_val = "-" if iteration.error_percent is None else f"{iteration.error_percent:.4f}"
+            ea_val = "-" if iteration.error_percent is None else f"{iteration.error_percent:.4f}%"
             converged = (
                 "-"
                 if iteration.error_percent is None
@@ -420,10 +420,17 @@ class MetodosCerradosRaicesView:
         if prev_point is None or iteration.error_percent is None:
             lines.append(self._mono_line("Eₐ inicia sin calcular en la primera iteracion."))
         else:
+            delta = iteration.point - prev_point
+            ratio = delta / iteration.point
+            percent = iteration.error_percent
             lines.append(
                 self._formula_block(
                     "Eₐ",
-                    f"|({self._fmt(iteration.point)} - {self._fmt(prev_point)}) / {self._fmt(iteration.point)}| * 100% = {iteration.error_percent:.6f}%",
+                    (
+                        f"|xᵣ(k) - xᵣ(k-1)| / |xᵣ(k)| = "
+                        f"|{self._fmt(iteration.point)} - {self._fmt(prev_point)}| / |{self._fmt(iteration.point)}| "
+                        f"= |{ratio:.6f}| = {percent:.6f}%"
+                    ),
                 )
             )
         product = iteration.fa * iteration.fp

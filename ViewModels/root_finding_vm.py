@@ -58,7 +58,7 @@ def _bisection(
 ) -> RootFindingResultVM:
     fa = evaluate_expression(expression, a)
     fb = evaluate_expression(expression, b)
-    _ensure_sign_change(fa, fb)
+    _ensure_sign_change(fa, fb, a, b)
     iterations: List[RootFindingIterationVM] = []
     prev_point: float | None = None
     approx_root = (a + b) / 2
@@ -144,7 +144,7 @@ def _false_position(
 ) -> RootFindingResultVM:
     fa = evaluate_expression(expression, a)
     fb = evaluate_expression(expression, b)
-    _ensure_sign_change(fa, fb)
+    _ensure_sign_change(fa, fb, a, b)
     iterations: List[RootFindingIterationVM] = []
     prev_point: float | None = None
     approx_root = a
@@ -224,9 +224,13 @@ def _false_position(
     )
 
 
-def _ensure_sign_change(fa: float, fb: float) -> None:
+def _ensure_sign_change(fa: float, fb: float, a: float | None = None, b: float | None = None) -> None:
     if fa * fb >= 0:
-        raise ValueError("El intervalo no es valido porque f(a) * f(b) >= 0.")
+        a_label = f"f({a})={fa:.6g}" if a is not None else f"f(a)={fa:.6g}"
+        b_label = f"f({b})={fb:.6g}" if b is not None else f"f(b)={fb:.6g}"
+        raise ValueError(
+            f"El intervalo no es valido: {a_label}, {b_label}. Ajusta a,b para que f(a) y f(b) tengan signos opuestos."
+        )
 
 
 def _relative_error(previous: float | None, current: float) -> float | None:
