@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import List
-import re
 
 import flet as ft
 from flet import Icons as icons
@@ -41,11 +40,11 @@ class NumericalErrorsView:
         self._function_field = ft.TextField(
             label="Funcion f(x)",
             value="",
-            hint_text="Ejemplo: sin(x) + x**2 o 3*x + 3",
+            hint_text="Ejemplo: sin(x) + x^2 o 3*x + 3",
             border_radius=12,
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,
-            helper_text="Usa * para multiplicar (3*x) y ** para potencias.",
+            helper_text="Usa * para multiplicar (3*x) y ^ para potencias.",
             on_change=self._handle_function_change,
             on_submit=self._handle_function_submit,
         )
@@ -269,7 +268,7 @@ class NumericalErrorsView:
                                 ft.Text("• xₐ: medición aproximada o xᵥ ± Δx.", size=11, color=TEXT_MUTED),
                                 ft.Text("• xᵥ para f(x): argumento base para evaluar f(x) en propagación.", size=11, color=TEXT_MUTED),
                                 ft.Text("• xₐ para f(x): argumento perturbado (xᵥ ± Δx) para calcular Δy.", size=11, color=TEXT_MUTED),
-                                ft.Text("• f(x): función elegida para calcular la propagación del error (sin(x)+x**2, x**3, etc.).", size=11, color=TEXT_MUTED),
+                                ft.Text("• f(x): función elegida para calcular la propagación del error (sin(x)+x^2, x^3, etc.).", size=11, color=TEXT_MUTED),
                             ],
                         ),
                     ),
@@ -283,7 +282,7 @@ class NumericalErrorsView:
                                 ft.Text("Ejercicio propuesto 4", size=12, weight=ft.FontWeight.W_600, color=TEXT_DARK),
                                 ft.Text(
                                     "x = 2.5 con Δx = 0.01 ⇒ xᵥ = 2.5, xₐ = xᵥ + Δx = 2.51, "
-                                    "xᵥ para f(x) = 2.5, xₐ para f(x) = 2.51 y f(x) = x**3.",
+                                    "xᵥ para f(x) = 2.5, xₐ para f(x) = 2.51 y f(x) = x^3.",
                                     size=11,
                                     color=TEXT_MUTED,
                                 ),
@@ -345,14 +344,6 @@ class NumericalErrorsView:
         self._safe_update(self._procedure_container)
         self._safe_update(self._interpretation_text)
 
-    def _normalize_expression(self, expr: str) -> str:
-        normalized = expr.replace("^", "**")
-        normalized = re.sub(r"(?<=\d)(?=[A-Za-z\(])", "*", normalized)
-        normalized = re.sub(r"(?<=[A-Za-z])(?=\d)", "*", normalized)
-        normalized = re.sub(r"(?<=\))(?=[A-Za-z\d\(])", "*", normalized)
-        normalized = re.sub(r"(?<=[A-Za-z\d])(?=\()", "*", normalized)
-        return normalized
-
     def _concept_chip(self, concept: ErrorConceptVM) -> ft.Control:
         return ft.Container(
             bgcolor="#fffaf6",
@@ -385,20 +376,19 @@ class NumericalErrorsView:
             if not silent:
                 self._show_error(str(exc))
             return
-        expression = (self._function_expression or self._function_field.value or "").strip()
-        if not expression:
+        raw_expression = (self._function_expression or self._function_field.value or "").strip()
+        if not raw_expression:
             if not silent:
-                message = "Ingresa una funcion como sin(x) + x**2."
+                message = "Ingresa una funcion como sin(x) + x^2."
                 self._function_field.error_text = message
                 self._safe_update(self._function_field)
                 self._show_error(message)
             return
-        expression = self._normalize_expression(expression)
         try:
             vm = compute_error_analysis(
                 true_value=true_value,
                 approx_value=approx_value,
-                function_expression=expression,
+                function_expression=raw_expression,
                 true_input=true_input,
                 approx_input=approx_input,
             )
@@ -409,8 +399,8 @@ class NumericalErrorsView:
                 self._safe_update(self._function_field)
                 self._show_error(message)
             return
-        self._function_expression = expression
-        self._function_field.value = expression
+        self._function_expression = raw_expression
+        self._function_field.value = raw_expression
         self._function_field.error_text = None
         self._safe_update(self._function_field)
         self._render_error_analysis(vm)
