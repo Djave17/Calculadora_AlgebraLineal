@@ -71,6 +71,7 @@ def _bisection(
         fp = evaluate_expression(expression, point)
         error_percent = _relative_error(prev_point, point)
 
+        #caso raíz exacta
         if fp == 0:
             converged = True
             error_percent = 0.0
