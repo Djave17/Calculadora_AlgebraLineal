@@ -2,12 +2,31 @@ from __future__ import annotations
 
 from typing import cast
 import math
+import re
 
 import flet as ft
 from flet import Colors as colors, Icons as icons
 
 from ViewModels.root_finding_vm import MethodName, RootFindingResultVM, RootFindingIterationVM, solve_root
 from ...styles import BORDER_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, SURFACE_COLOR, TEXT_DARK, TEXT_MUTED
+
+_SUPERSCRIPT_DIGITS: dict[str, str] = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "+": "⁺",
+    "-": "⁻",
+}
+_SUPERSCRIPT_REVERSE: dict[str, str] = {v: k for k, v in _SUPERSCRIPT_DIGITS.items()}
+_SUPERSCRIPT_CHARS = "".join(_SUPERSCRIPT_DIGITS.values())
+_SUPERSCRIPT_SEQUENCE_PATTERN = re.compile(rf"([A-Za-z0-9\)\]])([{_SUPERSCRIPT_CHARS}]+)")
 
 
 class MetodosCerradosRaicesView:
@@ -33,8 +52,11 @@ class MetodosCerradosRaicesView:
             border_radius=12,
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,
+            on_change=self._handle_function_change,
             on_submit=self._handle_solve,
         )
+        # Mostrar exponente bonito desde el inicio
+        self._function_field.value = self._beautify_expression(self._function_field.value)
         self._a_field = ft.TextField(
             label="Limite inferior a",
             value="1",
@@ -207,9 +229,18 @@ class MetodosCerradosRaicesView:
         )
         return ft.Container(expand=True, padding=ft.Padding(12, 12, 12, 24), content=layout)
 
+    def _handle_function_change(self, e: ft.ControlEvent) -> None:
+        """Cuando el usuario escribe ^n, se muestra el exponente como superíndice."""
+        current_value = e.control.value or ""
+        plain_expr = self._plain_expression(current_value)
+        beautified = self._beautify_expression(plain_expr)
+        if beautified != current_value:
+            self._function_field.value = beautified
+            self._safe_update(self._function_field)
+
     def _handle_solve(self, _=None) -> None:
         try:
-            expression = (self._function_field.value or "").strip()
+            expression = self._plain_expression((self._function_field.value or "").strip())
             if not expression:
                 raise ValueError("Ingresa una funcion f(x).")
             a = float(self._a_field.value)
@@ -443,6 +474,25 @@ class MetodosCerradosRaicesView:
         )
         details = ft.Column(spacing=6, controls=lines)
         return ft.Container(padding=ft.Padding(8, 4, 8, 12), content=ft.Column(spacing=4, controls=[header, details]))
+
+    def _beautify_expression(self, expr: str) -> str:
+        """Convierte x^3 en x³ para mostrarlo sin el símbolo ^."""
+        def repl(match: re.Match[str]) -> str:
+            sequence = match.group(1)
+            return "".join(_SUPERSCRIPT_DIGITS.get(ch, ch) for ch in sequence)
+
+        return re.sub(r"\^([0-9+\-]+)", repl, expr)
+
+    def _plain_expression(self, expr: str) -> str:
+        """Convierte superíndices (x³) de vuelta a notación con ^ para evaluar."""
+        def repl(match: re.Match[str]) -> str:
+            base = match.group(1)
+            supers = match.group(2)
+            digits = "".join(_SUPERSCRIPT_REVERSE.get(ch, ch) for ch in supers)
+            return f"{base}^{digits}"
+
+        expr = _SUPERSCRIPT_SEQUENCE_PATTERN.sub(repl, expr)
+        return expr
 
     def _fmt(self, value: float) -> str:
         return f"{value:.6f}"
