@@ -23,6 +23,12 @@ Aplicación GUI/CLI diseñada para cursos de álgebra lineal (UAM). Toda la arit
 | **Notación (Prog 8)** | Tarjetas para descomponer números en base 10 y base 2, mostrando cada potencia y suma final. |
 | **Errores (Prog 8)** | Conceptos ilustrados, ejemplos de punto flotante y laboratorio para error absoluto/relativo y propagación. |
 
+### Métodos numéricos
+
+- Ingresa f(x) con `^` para potencias; se aceptan constantes `pi`, `e` y `euler` (ej.: `pi^2`, `euler^(x)`).
+- Funciones trigonométricas disponibles: `sen/sin`, `cos`, `tan`, `cotan` y variantes (`cot`, `cotg`, `ctg`), además de `log`, `sqrt`, `exp`, etc.
+- Válido tanto para métodos abiertos (Newton-Raphson, Secante) como cerrados (Bisección, Regla Falsa).
+
 ---
 
 ### Documentación por carpetas

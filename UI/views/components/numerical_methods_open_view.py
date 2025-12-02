@@ -54,7 +54,7 @@ class NumericalMethodsOpenView:
         self._function_field = ft.TextField(
             label="f(x)",
             value="x^3 - x - 1",
-            helper_text="Usa x como variable y ^ para potencias.",
+            helper_text="Usa x como variable; admite pi/euler y sen, cos, tan, cotan. Usa ^ para potencias.",
             border_radius=12,
             border_color=PRIMARY_COLOR,
             focused_border_color=SECONDARY_COLOR,

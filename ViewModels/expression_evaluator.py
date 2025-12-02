@@ -36,6 +36,8 @@ _ALLOWED_FUNCS: Dict[str, Callable[..., float]] = {
     "tan": math.tan,
     "tangente": math.tan,
     "tg": math.tan,
+    "cotan": _cot,
+    "cotangente": _cot,
     "ctg": _cot,
     "cot": _cot,
     "cotg": _cot,
@@ -66,6 +68,7 @@ _ALLOWED_CONSTANTS: Dict[str, float] = {
     "pi": math.pi,
     "tau": math.tau,
     "e": math.e,
+    "euler": math.e,
 }
 
 _ALLOWED_GLOBALS = {**_ALLOWED_FUNCS, **_ALLOWED_CONSTANTS}
