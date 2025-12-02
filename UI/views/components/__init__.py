@@ -13,7 +13,7 @@ from .matrix_inverse_view import MatrixInverseView
 from .determinant_view import DeterminantView
 from .numerical_errors_view import NumericalErrorsView
 from .positional_notation_view import PositionalNotationView
-from .root_finding_view import MetodosCerradosRaicesView
+from .numerical_methods_view import NumericalMethodsView
 from .custom_config_panels import (
     MatrixOpsConfigPanel,
     TransposeConfigPanel,
@@ -37,7 +37,7 @@ __all__ = [
     "DeterminantView",
     "NumericalErrorsView",
     "PositionalNotationView",
-    "MetodosCerradosRaicesView",
+    "NumericalMethodsView",
     "MatrixOpsConfigPanel",
     "TransposeConfigPanel",
     "VectorPropertiesConfigPanel",

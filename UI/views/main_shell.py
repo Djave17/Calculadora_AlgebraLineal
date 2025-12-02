@@ -23,7 +23,7 @@ from .components import (
     DeterminantView,
     NumericalErrorsView,
     PositionalNotationView,
-    MetodosCerradosRaicesView,
+    NumericalMethodsView,
 )
 from .components.steps_dialog import show_steps_dialog
 from .components.custom_config_panels import (
@@ -73,7 +73,7 @@ class MainShell:
         self._determinant_view: Optional[DeterminantView] = None
         self._numerical_errors_view: Optional[NumericalErrorsView] = None
         self._positional_notation_view: Optional[PositionalNotationView] = None
-        self._metodos_cerrados_view: Optional[MetodosCerradosRaicesView] = None
+        self._numerical_methods_view: Optional[NumericalMethodsView] = None
 
         self._matrix_ops_config: Optional[MatrixOpsConfigPanel] = None
         self._transpose_config_panel: Optional[TransposeConfigPanel] = None
@@ -316,10 +316,10 @@ class MainShell:
             self._positional_notation_view = PositionalNotationView(self.page)
         return self._positional_notation_view
 
-    def _ensure_metodos_cerrados_view(self) -> MetodosCerradosRaicesView:
-        if self._metodos_cerrados_view is None:
-            self._metodos_cerrados_view = MetodosCerradosRaicesView(self.page)
-        return self._metodos_cerrados_view
+    def _ensure_numerical_methods_view(self) -> NumericalMethodsView:
+        if self._numerical_methods_view is None:
+            self._numerical_methods_view = NumericalMethodsView(self.page)
+        return self._numerical_methods_view
 
     def _activate_method(self, method: MethodInfo) -> None:
         # Conmutar entre tipos de vista de forma segura y sin variables no definidas
@@ -453,8 +453,8 @@ class MainShell:
                 self._config_container.visible = False
                 self._safe_update(self._config_container)
 
-        elif method.view_type == "metodos_cerrados_raices":
-            view = self._ensure_metodos_cerrados_view()
+        elif method.view_type == "numerical_methods":
+            view = self._ensure_numerical_methods_view()
             if self._center_container:
                 self._center_container.content = view.view
                 self._safe_update(self._center_container)

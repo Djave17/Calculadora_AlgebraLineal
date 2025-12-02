@@ -74,6 +74,7 @@ _ALLOWED_GLOBALS = {**_ALLOWED_FUNCS, **_ALLOWED_CONSTANTS}
 _NUMBER_VAR_PATTERN = re.compile(r"((?:\d+\.\d+)|\d+)\s*([A-Za-z\(])")
 _PAREN_VAR_PATTERN = re.compile(r"(\))\s*([A-Za-z\(])")
 _VAR_PAREN_PATTERN = re.compile(r"(x)\s*(\()")
+_E_EXP_PATTERN = re.compile(r"(?<![A-Za-z0-9_])e(\^|\*\*)\s*\(")
 
 
 def evaluate_expression(expr: str, x_value: float) -> float:
@@ -100,7 +101,7 @@ def _eval_node(node: ast.AST, x_value: float) -> Any:
             return node.value
         raise ValueError("Constante no numerica.")
     if isinstance(node, ast.Name):
-        if node.id == "x":
+        if node.id in {"x", "X"}:
             return x_value
         key = node.id.lower()
         if key in _ALLOWED_GLOBALS:
@@ -137,7 +138,10 @@ def _eval_node(node: ast.AST, x_value: float) -> Any:
 
 
 def _normalize_expression(expr: str) -> str:
-    expr = expr.strip().replace("^", "**")
+    expr = expr.strip()
+    # Permite e^(...) convirtiendo a exp(...)
+    expr = re.sub(r"(?<![A-Za-z0-9_])e\^\s*\(", "exp(", expr)
+    expr = expr.replace("^", "**")
     expr = _NUMBER_VAR_PATTERN.sub(r"\1*\2", expr)
     expr = _PAREN_VAR_PATTERN.sub(r"\1*\2", expr)
     expr = _VAR_PAREN_PATTERN.sub(r"\1*\2", expr)
