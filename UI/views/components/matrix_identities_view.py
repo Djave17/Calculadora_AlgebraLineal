@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Iterable, Tuple
 
 import flet as ft
 from flet import Icons as icons
@@ -24,7 +24,7 @@ class ModeConfig:
 
 
 class MatrixIdentitiesView:
-    """Vista unificada para AX = B, combinación lineal y sistema homogéneo."""
+    """Vista unificada para AX = B, combinacion lineal y sistema homogeneo."""
 
     def __init__(
         self,
@@ -40,10 +40,10 @@ class MatrixIdentitiesView:
             "ax_b": ModeConfig(
                 method=MethodInfo(
                     id="identities_axb",
-                    label="Ecuación AX = B",
+                    label="Ecuacion AX = B",
                     icon="TABLE_ROWS",
                     available=True,
-                    description="Resuelve A·x = b registrando pasos Gauss–Jordan.",
+                    description="Resuelve A*x = b registrando pasos Gauss-Jordan.",
                     category="Identidades de matrices",
                     analysis_context=None,
                     force_homogeneous=False,
@@ -51,32 +51,32 @@ class MatrixIdentitiesView:
                 ),
                 rows_label="Filas (m)",
                 cols_label="Columnas de A (n)",
-                description="Cada columna de A corresponde a una variable xᵢ; la última columna es el vector b.",
+                description="Cada columna de A corresponde a una variable xi; la ultima columna es el vector b.",
                 default_rows=3,
                 default_cols=3,
             ),
             "combination": ModeConfig(
                 method=MethodInfo(
                     id="identities_combination",
-                    label="Combinación lineal",
+                    label="Combinacion lineal",
                     icon="FUNCTIONS",
                     available=True,
-                    description="Determina si b pertenece al span de {v₁,…,vₖ}.",
+                    description="Determina si b pertenece al span de {v1,...,vk}.",
                     category="Identidades de matrices",
                     analysis_context="combination",
                     force_homogeneous=False,
                     variable_prefix="c",
                 ),
-                rows_label="Dimensión (n)",
-                cols_label="Número de vectores (k)",
-                description="Introduce los vectores generadores como columnas y b en la última columna.",
+                rows_label="Dimension (n)",
+                cols_label="Numero de vectores (k)",
+                description="Introduce los vectores generadores como columnas y b en la ultima columna.",
                 default_rows=3,
                 default_cols=2,
             ),
             "homogeneous": ModeConfig(
                 method=MethodInfo(
                     id="identities_homogeneous",
-                    label="Sistema homogéneo A·c = 0",
+                    label="Sistema homogeneo A*c = 0",
                     icon="HUB",
                     available=True,
                     description="Verifica independencia lineal y soluciones no triviales.",
@@ -87,7 +87,7 @@ class MatrixIdentitiesView:
                 ),
                 rows_label="Filas (m)",
                 cols_label="Columnas de A (n)",
-                description="La última columna se mantiene en 0; identifica soluciones no triviales.",
+                description="La ultima columna se mantiene en 0; identifica soluciones no triviales.",
                 default_rows=3,
                 default_cols=3,
             ),
@@ -114,11 +114,12 @@ class MatrixIdentitiesView:
         self._info_text = ft.Text(current_cfg.description, size=12, color=TEXT_MUTED)
 
         self._mode_buttons = ft.SegmentedButton(
-            selected=self._mode,
+            selected={self._mode},
+            allow_empty_selection=False,
             segments=[
-                ft.Segment(value="ax_b", label="AX = B", icon=icons.TABLE_ROWS),
-                ft.Segment(value="combination", label="Combinación", icon=icons.FUNCTIONS),
-                ft.Segment(value="homogeneous", label="A·c = 0", icon=icons.HUB),
+                ft.Segment(value="ax_b", label=ft.Text("AX = B"), icon=ft.Icon(icons.TABLE_ROWS)),
+                ft.Segment(value="combination", label=ft.Text("Combinacion"), icon=ft.Icon(icons.FUNCTIONS)),
+                ft.Segment(value="homogeneous", label=ft.Text("A*c = 0"), icon=ft.Icon(icons.HUB)),
             ],
             on_change=self._handle_mode_change,
         )
@@ -140,7 +141,7 @@ class MatrixIdentitiesView:
             controls=[
                 ft.Text("Identidades de matrices", size=22, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
                 ft.Text(
-                    "Explora AX = B, combinación lineal y sistemas homogéneos con la misma matriz aumentada.",
+                    "Explora AX = B, combinacion lineal y sistemas homogeneos con la misma matriz aumentada.",
                     size=12,
                     color=TEXT_MUTED,
                 ),
@@ -182,16 +183,21 @@ class MatrixIdentitiesView:
 
     # ---------------------- Mode management ----------------------
     def _handle_mode_change(self, event: ft.ControlEvent) -> None:
-        raw_value = event.control.value if event.control else self._mode
-        if isinstance(raw_value, (set, tuple, list)):
-            raw_value = next(iter(raw_value), self._mode) if raw_value else self._mode
-        self._switch_mode(str(raw_value))
+        selected = self._extract_selected_mode(
+            getattr(event.control, "selected", None) if event and event.control else None
+        )
+        if selected is None and event and event.control:
+            selected = self._extract_selected_mode(getattr(event.control, "value", None))
+        self._switch_mode(selected or self._mode)
 
     def _switch_mode(self, mode: str) -> None:
         if mode not in self._modes or mode == self._mode:
             return
         self._mode = mode
         cfg = self._modes[self._mode]
+        if self._mode_buttons:
+            self._mode_buttons.selected = {self._mode}
+            self._safe_update(self._mode_buttons)
         self._config_panel.set_method(cfg.method)
         self._config_panel.set_labels(cfg.rows_label, cfg.cols_label)
         self._info_text.value = cfg.description
@@ -245,7 +251,7 @@ class MatrixIdentitiesView:
 
     def set_mode(self, mode: str) -> None:
         if mode in self._modes and mode != self._mode:
-            self._mode_buttons.value = mode
+            self._mode_buttons.selected = {mode}
             self._safe_update(self._mode_buttons)
             self._switch_mode(mode)
 
@@ -260,3 +266,8 @@ class MatrixIdentitiesView:
                 control.update()
         except AssertionError:
             pass
+
+    def _extract_selected_mode(self, raw_value: Iterable[str] | str | None) -> str | None:
+        if isinstance(raw_value, (set, tuple, list)):
+            return next(iter(raw_value), None)
+        return str(raw_value) if raw_value else None

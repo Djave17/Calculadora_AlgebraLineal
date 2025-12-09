@@ -425,6 +425,8 @@ class MainShell:
                 self._config_container.visible = True
                 self._config_visible = True
                 self._safe_update(self._config_container)
+            # Force full page update to ensure view switch is reflected
+            self.page.update()
 
         elif method.view_type == "mer_notes":
             view = self._ensure_mer_view()
